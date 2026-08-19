@@ -1,0 +1,26 @@
+{
+  "skill_name": "polyrag-dev",
+  "evals": [
+    {
+      "id": 1,
+      "name": "semantic-router-module",
+      "prompt": "Implement the semantic router module for the PolyRAG project at pipeline/router.py. It must route a text chunk (or user question) to one of three routes (relational, vectorial, graph) using cosine similarity against pre-embedded route utterances, compute top1/top2 and the margin, apply the thresholds from config.yaml (tau_high=0.62, tau_low=0.35, delta_margin=0.08), fall back to vectorial below tau_low, and call an LLM-as-judge in the gray zone. Every routing decision must emit an OpenTelemetry span named pipeline.router with attributes router.route, router.score_top1, router.score_top2, router.margin and router.decision_stage. The project runs natively on Windows + AMD Vulkan with no PyTorch, no vLLM, no Ollama, no Docker. Write the full module to a file.",
+      "expected_output": "A complete pipeline/router.py implementing the 3-stage deterministic routing with the given thresholds, emitting the standard span, and using only permitted dependencies (numpy/FAISS).",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "models-config-setup",
+      "prompt": "Set up the config.yaml model sections and the llama-server startup script for the PolyRAG project. I need the three model instances configured with the right files, ports and VRAM: the reasoning LLM, the OCR model for extracting text from images in the data_drop pipeline, and the embeddings model. Also write the PowerShell startup script that launches the three llama-server.exe processes with the correct flags (including the multimodal projector for OCR and the embeddings flag). Constraints: Windows native + AMD Vulkan, no CUDA, no PyTorch, no vLLM, no Ollama, no Docker.",
+      "expected_output": "config.yaml sections for llm/ocr/embeddings with correct model files, ports (8080/8081/8082) and a start_llm_servers.ps1 script using llama-server.exe with --mmproj for OCR and --embeddings flag for the embedder.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "graph-rag-hippo",
+      "prompt": "Implement the graph RAG module for the PolyRAG project at rags/graph.py following the HippoRAG 2 approach (arXiv 2502.14802). It should extract (subject, relation, object) triples from text chunks using an LLM (via the project's OpenAI-compatible llama-server client, NOT the hipporag library and NOT torch), build a networkx.DiGraph with entity nodes and chunk nodes, persist it to a JSON file, and at query time match question entities to graph nodes via embeddings and rank passages using Personalized PageRank (nx.personalized_pagerank with a personalization vector). Emit OpenTelemetry spans for the graph build and the query. Write the full module.",
+      "expected_output": "A complete rags/graph.py using networkx + nx.personalized_pagerank, NER via the llama-server client, JSON persistence, and standard spans; no hipporag lib, no torch.",
+      "files": []
+    }
+  ]
+}
