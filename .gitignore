@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environment
+.venv/
+
+# Environment variables
+.env
+.env.local
+
+# Models (large .gguf files, downloaded separately — see references/versions.md)
+models/*.gguf
+
+# Runtime binaries (downloaded separately — llama.cpp Vulkan build, Qdrant standalone)
+runtime/llama/
+runtime/qdrant/
+
+# Generated data (created by ingestion / RAGs at runtime)
+data/sql/*.db
+data/qdrant/
+data/graph/*.json
+data/processed/*
+!data/processed/.gitkeep
+data_drop/*
+!data_drop/.gitkeep
+
+# Frontend (SvelteKit) — Dia 5
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/dist/
+
+# Claude Code local settings (machine-specific overrides)
+.claude/settings.local.json
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
