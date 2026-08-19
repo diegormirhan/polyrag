@@ -1,0 +1,87 @@
+server:
+  host: 127.0.0.1
+  port: 8000
+
+llama:
+  bin_path: runtime/llama/llama-server.exe
+  llm:            # sempre de pé (responde perguntas)
+    model_path: models/Qwen3-14B-Q4_K_M.gguf
+    host: 127.0.0.1
+    port: 8080
+    ctx_size: 16384
+    n_gpu_layers: -1
+    temperature: 0.2
+  ocr:            # GLM-OCR ~830M params (~2.3GB VRAM) — fica de pé
+    model_path: models/GLM-OCR-Q8_0.gguf
+    mmproj_path: models/mmproj-GLM-OCR-Q8_0.gguf
+    host: 127.0.0.1
+    port: 8081
+    ctx_size: 8192
+    n_gpu_layers: -1
+  embeddings:
+    model_path: models/bge-m3-Q8_0.gguf
+    host: 127.0.0.1
+    port: 8082
+    ctx_size: 8192
+    n_gpu_layers: -1
+    dimensions: 1024
+
+qdrant:
+  bin_path: runtime/qdrant/qdrant.exe
+  host: 127.0.0.1
+  port: 6333
+  collection: polyrag_docs
+  distance: Cosine
+  vector_size: 1024
+
+paths:
+  data_drop: data_drop
+  processed: data/processed
+  sqlite_db: data/sql/relacional.db
+  graph_store: data/graph/graph.json
+
+# ---------- Âncoras do Roteador (treinam o roteador sem escrever código) ----------
+router:
+  tau_high: 0.62
+  tau_low: 0.35
+  delta_margin: 0.08
+  llm_judge_enabled: true
+  routes:
+    relational:
+      description: "Dados tabulares, planilhas, finanças, logs estruturados"
+      utterances:
+        - "quantas vendas tivemos em março por região"
+        - "qual o total de receita do trimestre"
+        - "liste os 10 produtos mais vendidos"
+        - "média salarial por departamento"
+    vectorial:
+      description: "Texto não estruturado, narrativas, documentos, artigos"
+      utterances:
+        - "resuma o documento sobre história da empresa"
+        - "o que o artigo diz sobre mudanças climáticas"
+        - "quais os pontos principais do relatório narrativo"
+    graph:
+      description: "Regras de negócio, compliance, dependências, multi-hop"
+      utterances:
+        - "se o fornecedor A falhar, quais contratos são afetados"
+        - "quais políticas se aplicam a transferências internacionais"
+        - "rastreie as dependências desse processo de aprovação"
+
+cache:
+  enabled: true
+  similarity_threshold: 0.92
+  max_entries: 10000
+
+ingest:
+  watch_interval_s: 2.0
+  chunk_size: 512
+  chunk_overlap: 64
+  ocr_prompt: "Extraia todo o texto visível desta imagem. Reproduza tabelas em Markdown."
+  vision_extensions: [".png", ".jpg", ".jpeg", ".webp", ".bmp"]
+  text_extensions: [".txt", ".md"]
+  table_extensions: [".csv", ".xlsx"]
+
+telemetry:
+  enabled: true
+  service_name: polyrag
+  ring_buffer_size: 500
