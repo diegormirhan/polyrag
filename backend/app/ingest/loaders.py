@@ -1,0 +1,56 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+from docx import Document
+from pptx import Presentation
+from pypdf import PdfReader
+from app.ingest.watcher import FileKind, IngestFile
+
+def load_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+def load_table(path: Path) -> pd.DataFrame:
+    if path.suffix.lower() == ".csv":
+        return pd.read_csv(path)
+    return pd.read_excel(path)
+
+
+
+def load_document(path: Path) -> str:
+    suffix = path.suffix.lower()
+    if suffix == ".pdf":
+        return _load_pdf(path)
+    elif suffix == ".docx":
+        return _load_docx(path)
+    elif suffix == ".pptx":
+        return _load_pptx(path)
+    raise ValueError(f"unsupported document extension: {suffix}")
+
+def _load_pdf(path: Path) -> str:
+    reader = PdfReader(path)
+    return "\n".join(page.extract_text() or "" for page in reader.pages)
+
+def _load_docx(path: Path) -> str:
+    doc = Document(path)
+    return "\n".join(p.text for p in doc.paragraphs)
+
+def _load_pptx(path: Path) -> str:
+    prs = Presentation(path)
+    lines: list[str] = []
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                lines.append(shape.text_frame.text)
+    return "\n".join(lines)
+
+def load(ingest_file: IngestFile) -> str | pd.DataFrame:
+    if ingest_file.kind == FileKind.TEXT:
+        return load_text(ingest_file.path)
+    if ingest_file.kind == FileKind.TABLE:
+        return load_table(ingest_file.path)
+    if ingest_file.kind == FileKind.DOCUMENT:
+        return load_document(ingest_file.path)
+    raise ValueError(f"loaders.py doesn't handle kind={ingest_file.kind} yet")
+
