@@ -13,6 +13,19 @@
 
 > "Imagine uma empresa com 3 tipos de funcionário: um **contador** (entende tabelas e números), um **bibliotecário** (entende textos e documentos) e um **detetive** (entende regras e conexões entre as coisas). Quando chega um documento novo ou uma pergunta, um **recepcionista matemático** decide, em milissegundos, qual dos 3 é o certo para o trabalho — e ele mostra o 'raciocínio' dele num painel, com as notas de confiança de cada decisão. Eu construí esse prédio inteiro do zero: o recepcionista usa geometria de vetores, o detetive usa o mesmo algoritmo que o Google inventou para ranquear páginas (PageRank), e tudo roda localmente na minha GPU AMD, sem nuvem."
 
+### 0.0.1 Princípio de desenvolvimento — simplicidade primeiro, sem redundância
+
+Este projeto é construído **incrementalmente, começando pelo mais simples possível**. Regras:
+
+- Nunca adicionar robustez, tratamento de erro, ou lógica de borda para um cenário que ainda
+  não aconteceu de verdade. Se surgir um bug concreto durante o desenvolvimento, resolve-se
+  *naquele momento*, com o caso real guiando a solução — não antes, por precaução.
+- Evitar código redundante: se duas partes fazem a mesma verificação ou guardam o mesmo estado
+  de formas diferentes, simplificar para uma única fonte de verdade.
+- Cada módulo deve nascer do jeito mais enxuto que resolve o problema do dia. Complexidade é
+  adicionada de forma incremental, conforme o desenvolvimento avança e exige — nunca antecipada.
+- Isso vale para todo o projeto, não só um módulo específico.
+
 **Por que isso impressiona tanto Engenharia de Software quanto Data Science:**
 - *Engenharia:* API versionada, WebSockets, observabilidade real (OpenTelemetry), config-driven, CI, arquitetura modular de verdade.
 - *Data Science:* a matemática não está escondida numa biblioteca — está implementada e visível: similaridade de cosseno, margens de confiança, PageRank personalizado, quantização.
