@@ -16,8 +16,6 @@ def load_table(path: Path) -> pd.DataFrame:
         return pd.read_csv(path)
     return pd.read_excel(path)
 
-
-
 def load_document(path: Path) -> str:
     suffix = path.suffix.lower()
     if suffix == ".pdf":
@@ -53,4 +51,3 @@ def load(ingest_file: IngestFile) -> str | pd.DataFrame:
     if ingest_file.kind == FileKind.DOCUMENT:
         return load_document(ingest_file.path)
     raise ValueError(f"loaders.py doesn't handle kind={ingest_file.kind} yet")
-
