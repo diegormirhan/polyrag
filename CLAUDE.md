@@ -310,6 +310,16 @@ SQL é **teoria de conjuntos disfarçada**: `WHERE` é seleção (σ), `SELECT c
 
 ## 5. AS 3 BASES DO FEDERATED RAG (o coração científico)
 
+**A taxonomia que guia a separação (pitch):** cada RAG existe porque cobre um tipo de dado
+fundamentalmente diferente, com a estrutura de recuperação certa pra cada um — não é "3 bancos por
+3 bancos", é "3 formatos de informação, 3 formas certas de consultar cada um".
+
+| RAG | Categoria | Por quê é diferente dos outros |
+|---|---|---|
+| RAG 1 (SQLite) | **Estruturado / relacional** | Schema fixo, linhas e colunas — definição formal de "relacional" em banco de dados. Agregação exata (soma, média) é determinística: SQL certo = número certo, sem LLM fazendo conta. |
+| RAG 2 (Qdrant) | **Não-estruturado** | Texto livre, sem schema, significado captado por similaridade de embedding — não faz sentido tentar tabular ou modelar como grafo. |
+| RAG 3 (grafo) | **Conectado / relacionamentos explícitos** | Nós e arestas, foco em multi-hop e dependências (A afeta B afeta C) — note que "conectado" aqui é deliberadamente **diferente** de "relacional" (RAG 1): o grafo não tem schema fixo de linhas/colunas, tem topologia de relações. |
+
 ### RAG 1 — Relacional (Text-to-SQL) · Dia 3
 - **Dados:** CSV, XLSX, tabelas extraídas de imagens pelo GLM-OCR.
 - **Ferramentas:** pandas (lê planilhas) → SQLite (guarda) → Qwen3-14B (traduz pergunta → SQL) → validação read-only (só `SELECT`) → execução → resposta com tabela Markdown.
@@ -719,3 +729,4 @@ telemetry:
 | Juiz LLM lento | `llm_judge_enabled: false` no config; threshold conservador |
 | Escorregar o Dia 4 (o mais denso) | Dia 7 é folga planejada exatamente para isso |
 | Versões novas quebrarem algo | tudo pinado no `uv.lock`; docs linkadas na seção 1 |
+| `loaders.py` extrai só texto corrido de PDF/DOCX/PPTX, ignorando imagens e tabelas embutidas dentro do arquivo | Desmontar o documento em sub-elementos (texto/imagem/tabela) e rotear cada um pro tratamento certo (imagem → `ocr.py`, tabela → DataFrame → RAG 1) — ver Dia 8+ (hardening) |
