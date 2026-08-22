@@ -17,8 +17,8 @@ __pycache__/
 models/*.gguf
 
 # Runtime binaries (downloaded separately — llama.cpp Vulkan build, Qdrant standalone)
-runtime/llama/
-runtime/qdrant/
+bin/llama-server/
+bin/qdrant/
 
 # Generated data (created by ingestion / RAGs at runtime)
 data/sql/*.db

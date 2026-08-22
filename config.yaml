@@ -3,7 +3,7 @@ server:
   port: 8000
 
 llama:
-  bin_path: runtime/llama/llama-server.exe
+  bin_path: bin/llama-server/llama-server.exe
   llm:            # sempre de pé (responde perguntas)
     model_path: models/Qwen3-14B-Q4_K_M.gguf
     host: 127.0.0.1
