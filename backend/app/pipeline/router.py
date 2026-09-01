@@ -9,10 +9,26 @@ from app.pipeline.tabularity import tabularity_score
 @dataclass(frozen=True)
 class RouteDecision:
     route: str
-    score_top1: float
-    score_top2: float
-    margin: float
     decision_stage: str # "heuristic" | "embedding" | "llm_judge"
+    scores: dict[str, float]
+
+    @property
+    def score_top1(self)-> float:
+        return self._ranked[0]
+
+    @property
+    def score_top2(self) -> float:
+        ranked = self._ranked
+        return ranked[1] if len(ranked) > 1 else 0.0
+
+    @property
+    def margin(self) -> float:
+        return self.score_top1 - self.score_top2
+
+    @property
+    def _ranked(self) -> list[float]:
+        return sorted(self.scores.values(), reverse=True)
+    
 
 def _best_route_scores(vector: list[float], anchors: dict[str, list[list[float]]]) -> dict[str, float]:
     # For each route, the score is the cosine against its BEST-matching anchor
@@ -69,14 +85,7 @@ class Router:
         # Stage 1: heuristic — cheap, no embedding call at all.
         heuristic_score = tabularity_score(text)
         if heuristic_score >= cfg.tau_heuristic:
-            return RouteDecision(
-                route="relational",
-                score_top1=heuristic_score,
-                score_top2=0.0,  # not meaningful at this stage — no competing route was scored
-                margin=heuristic_score,
-                decision_stage="heuristic",
-            )
-
+            return RouteDecision(route="relational", decision_stage="heuristic", scores={"relational": heuristic_score})
         # Stage 2: cosine + margin against precomputed anchors.
         raw_vector = (await embed(self._clients.embeddings, [text]))[0]
         vector = normalize(raw_vector)
@@ -87,14 +96,14 @@ class Router:
         margin = top1_score - top2_score
 
         if top1_score >= cfg.tau_high and margin >= cfg.delta_margin:
-            return RouteDecision(top1_route, top1_score, top2_score, margin, "embedding")
+            return RouteDecision(top1_route, "embedding", scores)
 
         if top1_score < cfg.tau_low:
-            return RouteDecision("vectorial", top1_score, top2_score, margin, "embedding")
+            return RouteDecision("vectorial", "embedding", scores)
 
         # Stage 3: gray zone — ask the LLM to pick between the top 2 candidates.
         if not cfg.llm_judge_enabled:
-            return RouteDecision(top1_route, top1_score, top2_score, margin, "embedding")
+            return RouteDecision(top1_route, "embedding", scores)
 
         chosen = await _llm_judge(self._clients, text, top1_route, top2_route, self._settings)
-        return RouteDecision(chosen, top1_score, top2_score, margin, "llm_judge")
+        return RouteDecision(chosen, "llm_judge", scores)
