@@ -40,6 +40,14 @@ frontend/dist/
 # Claude Code local settings (machine-specific overrides)
 .claude/settings.local.json
 
+# Working notes and drafts — kept locally, not published with the repo
+ADR-0001-DESEMPATE-ZONA-CINZENTA.md
+ARTICLE.md
+CASO-GRAPHIFY-DETERMINISMO.md
+DEVLOG.md
+ESTUDO-MATEMATICA.md
+LINKEDIN POST.txt
+
 # IDE / OS
 .vscode/
 .idea/
