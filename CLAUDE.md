@@ -133,15 +133,17 @@ O núcleo do projeto **não** é "usar mais IA em tudo". É o oposto: **usar mat
                         │  └──────────┴────────────┴───────────────┘   │
                         └──────────────┬───────────────────────────────┘
                                        │ HTTP (API OpenAI-compatible)
-              ┌────────────────────────┼─────────────────────────┐
-              │                        │                         │
-   ┌──────────▼─────────┐  ┌───────────▼──────────┐  ┌───────────▼─────────┐
-   │ llama-server :8080 │  │ llama-server :8081   │  │ llama-server :8082  │
-   │ Qwen3-14B          │  │ GLM-OCR (OCR)       │  │ BGE-M3 (embeddings) │
-   │ raciocínio/SQL/NER │  │ OCR de imagens       │  │ texto → vetor[1024] │
-   └────────────────────┘  └──────────────────────┘  └─────────────────────┘
-              ▲                    ▲                          ▲
-              └──────────  GPU AMD RX 9060 XT (Vulkan) ───────┘
+        ┌──────────────────────┬──────┴──────────┬───────────────────────┐
+        │                      │                 │                       │
+   ┌────▼────────────┐  ┌──────▼─────────┐  ┌─────▼───────────┐  ┌────────▼─────────┐
+   │ llama-server     │  │ llama-server   │  │ llama-server     │  │ llama-server     │
+   │ :8080            │  │ :8081          │  │ :8082            │  │ :8083            │
+   │ Qwen3-8B         │  │ GLM-OCR        │  │ BGE-M3           │  │ Prometheus 2     │
+   │ raciocínio/SQL/  │  │ OCR de imagens │  │ texto → vetor    │  │ juiz do roteador │
+   │ NER/resposta     │  │                │  │ [1024]           │  │ (zona cinzenta)  │
+   └──────────────────┘  └────────────────┘  └──────────────────┘  └──────────────────┘
+              ▲                    ▲                   ▲                    ▲
+              └──────────────  GPU AMD RX 9060 XT (Vulkan) ─────────────────┘
 
    INGESTÃO:  data_drop/  →  (imagem? GLM-OCR extrai texto)  →  chunking
              →  roteador decide  →  grava na base certa (SQL / Qdrant / Grafo)
@@ -158,7 +160,7 @@ O núcleo do projeto **não** é "usar mais IA em tudo". É o oposto: **usar mat
 | **FastAPI** | Framework para criar APIs HTTP em Python. Você escreve funções, ele vira endpoints com documentação automática (Swagger). | A "recepção" do sistema |
 | **Uvicorn** | O servidor que mantém o FastAPI de pé atendendo requisições, inclusive WebSockets. | O "prédio" onde a recepção trabalha |
 | **PyYAML** | Lê arquivos `.yaml` (formato de configuração legível por humanos). | O `config.yaml` controla tudo sem mexer no código |
-| **OpenAI SDK** | Cliente Python oficial da OpenAI. O truque: o `llama-server` **finge ser a API da OpenAI**, então usamos esse cliente apontando para `localhost`. Padrão de mercado. | Falar com os 3 modelos de IA |
+| **OpenAI SDK** | Cliente Python oficial da OpenAI. O truque: o `llama-server` **finge ser a API da OpenAI**, então usamos esse cliente apontando para `localhost`. Padrão de mercado. | Falar com os 4 modelos de IA |
 | **NumPy** | A calculadora científica do Python: vetores, matrizes e operações de álgebra linear rápidas. | Toda a matemática do roteador |
 | **FAISS (CPU)** | Biblioteca da Meta para **busca de vetores parecidos**. Você dá um vetor, ela acha os mais próximos entre milhares, em microssegundos. | CAG (cache) + índice do roteador |
 | **Qdrant** | Um **banco de dados feito só para vetores**. Guarda os pedaços de texto como pontos num espaço de 1024 dimensões e busca por proximidade. Roda como programa standalone (sem Docker). | RAG 2 (memória de textos) |
@@ -168,15 +170,30 @@ O núcleo do projeto **não** é "usar mais IA em tudo". É o oposto: **usar mat
 | **OpenTelemetry (OTel)** | O **padrão da indústria para observabilidade**. Funciona como o rastreio dos Correios: cada etapa do pipeline gera um "registro de passagem" (span) com horário de entrada, saída e etiquetas (rota escolhida, nota de confiança, cache hit/miss). | O painel de vidro do sistema |
 | **python-multipart / httpx / websockets** | Upload de arquivos, chamadas HTTP de health-check e canais de tempo real. | Utilidades da API |
 
-### As 3 IAs locais (todas rodam no `llama-server` via Vulkan)
+### As 4 IAs locais (todas rodam no `llama-server` via Vulkan)
+
+> **Decisão registrada:** o Qwen3-14B original foi trocado por **Qwen3-8B** (mesma família, mesmo
+> tokenizer/chat template — evita as "manias de prompt" específicas de trocar de família de modelo,
+> como aconteceu com o GLM-OCR) para abrir espaço de VRAM pro 4º modelo abaixo. O desempate de rota
+> (LLM-as-judge) **saiu do Qwen3 e virou um modelo dedicado, menor** — evita gastar um modelo de
+> raciocínio geral numa tarefa de classificação binária simples, e libera VRAM pros outros papéis
+> do Qwen3 (SQL, NER, resposta final).
 
 | Modelo | Analogia | O que faz |
 |---|---|---|
-| **Qwen3-14B** (Q4_K_M, ~9.5GB VRAM) | O **cérebro raciocinador** | Traduz pergunta → SQL, desempata rotas duvidosas, extrai entidades/relações dos textos (NER), escreve as respostas finais |
+| **Qwen3-8B** (Q4_K_M, ~5.0GB VRAM) | O **cérebro raciocinador** | Traduz pergunta → SQL, extrai entidades/relações dos textos (NER), escreve as respostas finais |
 | **GLM-OCR** (Q8_0 + mmproj Q8_0, ~2.3GB VRAM) | Os **olhos** | Modelo especializado em OCR: lê foto de tabela/documento escaneado e devolve o texto (incluindo tabelas em Markdown) |
-
-> **Orçamento de VRAM (medido nos arquivos reais):** Qwen3-14B Q4_K_M (~9.5GB) + GLM-OCR Q8_0 + mmproj (~2.3GB) + BGE-M3 Q8_0 (~0.6GB) ≈ **12.4GB / 16GB** ✅. O GLM-OCR tem só ~830M parâmetros — os 3 modelos ficam **sempre de pé**. O modo "OCR sob demanda" vira uma otimização opcional para máquinas com menos VRAM.
 | **BGE-M3** (~0.6GB VRAM) | O **tradutor de significados** | Converte qualquer texto num vetor de 1024 números (o "GPS semântico"). Multilingue — funciona em PT-BR |
+| **Prometheus 2 — 7B** (Q4_K_M, ~4.4GB VRAM) | O **juiz** | Modelo especializado em avaliação/julgamento de LLM. Usado só no Estágio 3 do roteador (zona cinzenta): desempata entre as 2 rotas mais prováveis, na ingestão e na busca |
+
+> **Orçamento de VRAM (recalculado):** Qwen3-8B Q4_K_M (~5.0GB) + GLM-OCR Q8_0 + mmproj (~2.3GB) +
+> BGE-M3 Q8_0 (~0.6GB) + Prometheus 2 Q4_K_M (~4.4GB) ≈ **12.3GB**. Medido na prática, o Windows +
+> apps de fundo já consomem ~4GB de VRAM antes de qualquer modelo subir — ou seja, o orçamento real
+> fica bem mais apertado que os 16GB nominais da placa (~12GB efetivamente livres). Rodar os 4
+> modelos ao mesmo tempo fica no limite; **o modo "OCR sob demanda" (carregar o GLM-OCR só durante
+> a ingestão de imagens) deixou de ser só uma otimização opcional e vira candidato forte a ser
+> necessário na prática** — decisão final pendente de medição real (`llama-server --list-devices`
+> no uso cotidiano da máquina, não numa medição "limpa").
 
 > **Vulkan** é a API gráfica universal (AMD, NVIDIA, Intel). É o que permite rodar IA na sua AMD **sem CUDA** (que é coisa exclusiva da NVIDIA). O llama.cpp tem build oficial pronto para Vulkan no Windows.
 
@@ -291,13 +308,14 @@ Matematicamente, isso é encontrar o **autovetor principal da matriz de transiç
 
 **Por que isso dá multi-hop:** a "importância" escorre pelas arestas por vários saltos. Se a pergunta menciona "Fornecedor A", o PageRank espalha crédito para "Contrato Y" que depende dele, e dali para a "Cláusula Z" — 2 saltos de raciocínio, sem nenhuma regra programada. É raciocínio emergente por propagação no grafo.
 
-### 4.7 Quantização — "como 14 bilhões de parâmetros cabem em 16GB"
+### 4.7 Quantização — "como bilhões de parâmetros cabem em 16GB"
 
 Os "números" dentro de um modelo de IA normalmente são de 16 bits (FP16). A **quantização** os comprime para ~4 bits (Q4_K_M): 4x menos memória, com perda mínima de qualidade.
 
 ```
-Qwen3-14B em FP16:  14B × 2 bytes   ≈ 28 GB  → não cabe
-Qwen3-14B em Q4:    14B × 0.5 byte  ≈  8–9 GB → cabe com folga ✅
+Exemplo com 14B de parâmetros (didático — nosso Qwen3 hoje é o 8B, seção 3):
+Modelo 14B em FP16:  14B × 2 bytes   ≈ 28 GB  → não cabe
+Modelo 14B em Q4:    14B × 0.5 byte  ≈  8–9 GB → cabe com folga ✅
 ```
 
 É como comprimir uma foto RAW (pesadíssima) para JPEG de alta qualidade: o olho humano (aqui, a qualidade das respostas) quase não percebe.
@@ -322,7 +340,7 @@ fundamentalmente diferente, com a estrutura de recuperação certa pra cada um �
 
 ### RAG 1 — Relacional (Text-to-SQL) · Dia 3
 - **Dados:** CSV, XLSX, tabelas extraídas de imagens pelo GLM-OCR.
-- **Ferramentas:** pandas (lê planilhas) → SQLite (guarda) → Qwen3-14B (traduz pergunta → SQL) → validação read-only (só `SELECT`) → execução → resposta com tabela Markdown.
+- **Ferramentas:** pandas (lê planilhas) → SQLite (guarda) → Qwen3-8B (traduz pergunta → SQL) → validação read-only (só `SELECT`) → execução → resposta com tabela Markdown.
 - **Matemática:** álgebra relacional (4.8). Detecção de "isso é tabela?" usa a heurística do Dia 1 (densidade de vírgulas/números — estatística simples).
 - **Doc:** https://docs.python.org/3/library/sqlite3.html · https://pandas.pydata.org/docs/
 
@@ -335,7 +353,7 @@ fundamentalmente diferente, com a estrutura de recuperação certa pra cada um �
 ### RAG 3 — GraphRAG (HippoRAG 2 reimplementado) · Dia 4
 - **Dados:** regras de negócio, compliance, dependências lógicas — perguntas que exigem "saltos" (A afeta B que afeta C).
 - **Pipeline (conforme o paper HippoRAG 2, OSU-NLP):**
-  1. **NER/OpenIE:** Qwen3-14B extrai triplas `(sujeito, relação, objeto)` de cada chunk.
+  1. **NER/OpenIE:** Qwen3-8B extrai triplas `(sujeito, relação, objeto)` de cada chunk.
   2. **Grafo:** networkx monta nós (entidades + chunks) e arestas (relações). Persistido em JSON.
   3. **Busca:** entidades da pergunta → seeds → `nx.personalized_pagerank` → chunks mais relevantes → resposta.
 - **Matemática:** grafos + Personalized PageRank (4.6) + cosseno para o match das entidades (4.3).
@@ -351,7 +369,7 @@ fundamentalmente diferente, com a estrutura de recuperação certa pra cada um �
 |---|---|---|---|
 | **1. Heurística** | só na ingestão | regex/estatística: densidade de vírgulas, % de números, padrão de header → score ≥ 0.8 ⇒ `relational` | estatística descritiva |
 | **2. Embeddings** | ingestão e chat | cosseno contra as frases de exemplo de cada rota (definidas no `config.yaml`) + regra de margem | 4.1, 4.3, 4.4 |
-| **3. Juiz LLM** | só zona cinzenta | Qwen3-14B escolhe entre as 2 rotas mais votadas, com few-shot | — (custo alto, uso raro) |
+| **3. Juiz LLM** | só zona cinzenta | **Prometheus 2** (modelo dedicado, não o Qwen3) escolhe entre as 2 rotas mais votadas; roda 2x com a ordem invertida e só aceita se concordar nas duas (mitigação de viés de posição) | — (custo alto, uso raro) |
 
 Inspirado conceitualmente na lib `semantic-router` (https://semantic-router.readthedocs.io/en/latest/), mas implementado por nós com NumPy/FAISS — a matemática fica visível e testável (`tests/test_router_math.py`).
 
@@ -364,7 +382,7 @@ Inspirado conceitualmente na lib `semantic-router` (https://semantic-router.read
 5. **Decide:**
    - `top1 ≥ tau_high (0.62)` **e** `margem ≥ delta (0.08)` → vai para `top1` ✅ (geométrico, custo ~0)
    - `top1 < tau_low (0.35)` → fallback `vectorial`
-   - **senão (zona cinzenta)** → **LLM-as-judge**: Qwen3-14B lê o chunk + as descrições das rotas e escolhe (custa 1 chamada de LLM)
+   - **senão (zona cinzenta)** → **LLM-as-judge**: Prometheus 2 (modelo dedicado) lê o chunk + as descrições das rotas e escolhe (custa 2 chamadas de LLM — roda com a ordem das rotas invertida pra checar viés de posição)
 6. **Grava** o chunk na base da rota escolhida. Tudo registrado no span: `router.route`, `router.score_top1`, `router.score_top2`, `router.margin`, `router.decision_stage`.
 
 > **O mesmo componente serve os dois momentos:** na **ingestão** o input é o *conteúdo do chunk* ("onde guardo?"); na **busca** o input é a *pergunta do usuário* ("onde procuro?"). Mesmas âncoras, mesma matemática, uma engine só. É por isso que as frases-âncora do `config.yaml` são tão importantes: elas *treinam* o roteador sem escrever código.
@@ -532,7 +550,7 @@ polyrag/
 │   ├── main.py                 # app factory + lifespan + instrumentação OTel
 │   ├── core/                   # config.py · telemetry.py (exporter WS) · llama_client.py
 │   ├── api/v1/                 # health · chat · ingest · telemetry · router agregador
-│   ├── pipeline/               # orchestrator · heuristics · router · cache
+│   ├── pipeline/               # orchestrator · tabularity · router · cache
 │   ├── rags/                   # base.py · relational.py · vectorial.py · graph.py
 │   ├── ingest/                 # watcher · loaders · ocr · chunking
 │   └── schemas/                # DTOs pydantic (chat, ingest, telemetry)
@@ -561,11 +579,12 @@ Expand-Archive runtime/llama.zip runtime/llama; Remove-Item runtime/llama.zip
 Invoke-WebRequest "https://github.com/qdrant/qdrant/releases/download/v1.19.0/qdrant-x86_64-pc-windows-msvc.zip" -OutFile runtime/qdrant.zip
 Expand-Archive runtime/qdrant.zip runtime/qdrant; Remove-Item runtime/qdrant.zip
 
-# 5. modelos GGUF (~14GB — pode deixar baixando)
+# 5. modelos GGUF (~12GB — pode deixar baixando)
 uv tool install huggingface-hub   # fornece o comando 'hf'
-hf download Qwen/Qwen3-14B-GGUF Qwen3-14B-Q4_K_M.gguf --local-dir models
+hf download Qwen/Qwen3-8B-GGUF Qwen3-8B-Q4_K_M.gguf --local-dir models
 hf download ggml-org/GLM-OCR-GGUF GLM-OCR-Q8_0.gguf mmproj-GLM-OCR-Q8_0.gguf --local-dir models
 hf download gpustack/bge-m3-GGUF bge-m3-Q8_0.gguf --local-dir models
+hf download mradermacher/prometheus-7b-v2.0-GGUF prometheus-7b-v2.0.Q4_K_M.gguf --local-dir models
 ```
 
 **`config.yaml` (governa o framework — inclusive as âncoras do roteador):**
@@ -576,15 +595,15 @@ server:
   port: 8000
 
 llama:
-  bin_path: runtime/llama/llama-server.exe
-  llm:            # sempre de pé (responde perguntas)
-    model_path: models/Qwen3-14B-Q4_K_M.gguf
+  bin_path: bin/llama-server/llama-server.exe
+  llm:            # Qwen3-8B — raciocínio/SQL/NER/resposta final
+    model_path: models/Qwen3-8B-Q4_K_M.gguf
     host: 127.0.0.1
     port: 8080
     ctx_size: 16384
     n_gpu_layers: -1
     temperature: 0.2
-  ocr:            # GLM-OCR ~830M params (~2.3GB VRAM) — fica de pé
+  ocr:            # GLM-OCR ~830M params (~2.3GB VRAM) — candidato a "sob demanda"
     model_path: models/GLM-OCR-Q8_0.gguf
     mmproj_path: models/mmproj-GLM-OCR-Q8_0.gguf
     host: 127.0.0.1
@@ -598,6 +617,12 @@ llama:
     ctx_size: 8192
     n_gpu_layers: -1
     dimensions: 1024
+  judge:          # Prometheus 2 — juiz dedicado do roteador (Estágio 3, zona cinzenta)
+    model_path: models/prometheus-7b-v2.0.Q4_K_M.gguf
+    host: 127.0.0.1
+    port: 8083
+    ctx_size: 4096
+    n_gpu_layers: -1
 
 qdrant:
   bin_path: runtime/qdrant/qdrant.exe
@@ -673,7 +698,7 @@ telemetry:
 | **1** | **Ingestão de conteúdo** — o arquivo chega na `data_drop` | watcher detecta o arquivo; separa imagens de textos/planilhas; **GLM-OCR** extrai o texto das imagens; chunking | — (orquestração + OCR) |
 | **2** | **Roteador de ingestão** — decidir onde guardar | heurística (é tabular?) + engine de cosseno/margem + LLM-as-judge na zona cinzenta; chunk cai na rota certa com span de decisão | **cosseno, norma L2, margem** (4.2–4.4) |
 | **3** | **As 3 bases (RAGs)** — onde guardar e buscar | RAG1 Text-to-SQL (SQLite, validação read-only); RAG2 Qdrant (HNSW); RAG3 grafo (NER + `personalized_pagerank`) | álgebra relacional; **HNSW** (4.5); **PageRank** (4.6) |
-| **4** | **Caminho de busca** — responder | roteador de busca (mesma engine do Dia 2); CAG (cache FAISS em RAM, hit/miss); Qwen3-14B como LLM de resposta; orquestrador completo (Cache→Router→RAG→LLM) | reuso de 4.3/4.4 no caminho de query |
+| **4** | **Caminho de busca** — responder | roteador de busca (mesma engine do Dia 2); CAG (cache FAISS em RAM, hit/miss); Qwen3-8B como LLM de resposta; orquestrador completo (Cache→Router→RAG→LLM) | reuso de 4.3/4.4 no caminho de query |
 | **5** | **API + Frontend** | rotas finais `/api/v1/`, WebSockets; chat com streaming + painel de observabilidade ao vivo (spans OTel) | — (integração) |
 | **6** | **Documentação + CI** | README completo, GitHub Actions, testes de integração verdes | — |
 | **7** | **Folga planejada** | absorver atrasos; reler a seção 4 e explicar o projeto em voz alta | revisão |
@@ -689,6 +714,34 @@ telemetry:
 | **12** | Documentação final | README com diagrama da arquitetura, seção "A matemática por trás" (resumo da seção 4), GIF/vídeo da demo |
 | **13** | Divulgação técnica | post (dev.to/LinkedIn) explicando o projeto em linguagem simples — ensaiar o pitch da seção 0 |
 | **14** | Release | tag `v0.1.0` no GitHub, issues abertas com roadmap futuro, buffer final |
+
+### Backlog — técnicas avançadas de RAG (revisitar no dia certo, guiado por dado real)
+
+Lista de técnicas de RAG discutidas mas propositalmente adiadas pra não inflar o escopo do MVP.
+Cada uma entra no dia do roadmap indicado — **não implementar antes disso sem um caso real que
+justifique**, seguindo o princípio de simplicidade (seção 0.0.1).
+
+| Técnica | O que resolve | Quando revisitar | Nota de confiança |
+|---|---|---|---|
+| Clarification Loop (validar coerência da pergunta antes de rotear) | Pergunta ambígua/inválida gasta pipeline à toa | Dia 4 (orquestrador) ou Dia 8 | Alta — barato (1 chamada de LLM) |
+| "Lost in the middle" (documentos mais relevantes no início/fim da janela de contexto, menos relevantes no meio) | LLMs prestam menos atenção ao meio de contextos longos (Liu et al. 2023) | Dia 4 (montagem do contexto final antes do LLM) | Alta — é só reordenar uma lista, custo ~0 |
+| Recursive/semantic chunking (cortar por frase/parágrafo, ou por mudança semântica, em vez de contagem cega de caracteres) | Reduz corte de frase/ideia no meio | Dia 8 (hardening) | Média — semantic chunking exige embeddings *durante* a ingestão, mais infra que parece |
+| Parent-child chunking (indexar pedaço pequeno pra precisão de busca, devolver a seção/pai inteiro como contexto) | Equilibra precisão de retrieval com contexto completo pro LLM | Dia 3/4 (muda o schema de armazenamento do RAG 2) | Média — bom ganho, mas mexe na arquitetura de armazenamento |
+| Re-ranker (2º modelo reordena o top-k antes do LLM final) | Melhora ordenação além do score bruto de similaridade | Dia 4/8 | Baixa por enquanto — exigiria um 4º modelo/`llama-server` ou reaproveitar o Qwen3 (custo de infra real) |
+| Multi-interpretação / opinião vs. fato / contradição entre fontes | Perguntas interpretativas com respostas legitimamente diferentes, ou fontes que se contradizem | Dia 8+ | Baixa — difícil de avaliar objetivamente, risco de nunca "fechar" |
+| Late chunking / metadata rica (chunk_id, doc_id, page, section, tenant_id) | Embeddings com mais contexto de documento inteiro; rastreabilidade de origem | Dia 3 (metadata no schema de armazenamento) | Média |
+| Validação com 50-100 golden queries deixando o dado decidir prioridade | Medir o que realmente vale a pena melhorar, em vez de adivinhar | **Já planejado — Dia 11** (`scripts/evaluate.py`) | — |
+| Avaliar troca do Qwen3-8B pelo **Qwen3.5-9B** (lançado mar/2026; Q4_K_M 5.68GB vs 5.03GB, contexto nativo 262k vs 32k, benchmarks melhores) | Qualidade de SQL/NER/resposta final | Dia 8 (hardening) | Média — cabe no orçamento, mas **thinking vem ligado por padrão** e provavelmente atrapalha tarefas estruturadas (SQL/OpenIE): gera `<think>` que precisa ser removido antes de parsear, e custa latência. Trocar só com o pipeline completo, medindo com/sem thinking (tokens/s + qualidade) — não às cegas |
+
+**Fontes de referência trazidas na discussão** (técnicas de chunking/retrieval em geral, não específicas do PolyRAG):
+- https://dev.to/klement_gunndu/10-chunking-strategies-that-make-or-break-your-rag-pipeline-4cng
+- https://dev.to/aws/why-rag-gives-wrong-answers-and-how-to-fix-retrieval-failures-gbj
+- https://pub.towardsai.net/21-chunking-strategies-that-will-fix-your-broken-rag-system-14dac3f2b067
+- **`qdrant-search-quality`** (https://skills.qdrant.tech/) — skill oficial da Qdrant sobre diagnosticar
+  resultados ruins, busca híbrida e reranking. Consultar **no Dia 11**, se e somente se a avaliação
+  com golden queries mostrar recall ruim no RAG 2 — antes disso é otimização às cegas. As outras 10
+  skills do site tratam de operação em produção distribuída (scaling, multitenancy, monitoring,
+  upgrades), cenário que o PolyRAG não é: instância única, local, dataset de demonstração.
 
 ### Definition of Done (o projeto está pronto quando):
 - [ ] Drop de imagem + CSV + TXT + "regras" na `data_drop` → cada um cai na base certa, com spans provando
@@ -730,3 +783,4 @@ telemetry:
 | Escorregar o Dia 4 (o mais denso) | Dia 7 é folga planejada exatamente para isso |
 | Versões novas quebrarem algo | tudo pinado no `uv.lock`; docs linkadas na seção 1 |
 | `loaders.py` extrai só texto corrido de PDF/DOCX/PPTX, ignorando imagens e tabelas embutidas dentro do arquivo | Desmontar o documento em sub-elementos (texto/imagem/tabela) e rotear cada um pro tratamento certo (imagem → `ocr.py`, tabela → DataFrame → RAG 1) — ver Dia 8+ (hardening) |
+| **Arquivos de código-fonte (`.py`, `.js`, `.ts`…) não são suportados.** Hoje eles são descartados silenciosamente pelo `watcher._classify()` (extensão não está em nenhuma das 4 listas do `config.yaml`), sem nem chegar no roteador | **Limitação assumida, fora do escopo do MVP.** Suportar bem exigiria: parser de AST (tree-sitter) em vez de leitura como texto puro, chunking por função/classe (o `_SENTENCE_SPLIT` corta em `.`, que em código é acesso a atributo, não fim de frase), e provavelmente uma **4ª rota** no roteador — código não encaixa nas 3 categorias atuais (tabular/narrativo/relacional). Se alguém apenas adicionasse `.py` ao `text_extensions`, o chunk cairia no fallback `vectorial` por descarte (cosseno abaixo de `tau_low` contra todas as âncoras), não por decisão. Nota: o Graphify modela código como grafo via AST de forma 100% determinística — nesse caso específico é a escolha certa, já que imports/chamadas *são* arestas |

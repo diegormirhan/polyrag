@@ -24,7 +24,7 @@ polyrag/
 │   ├── main.py                 # FastAPI factory, lifespan, OTel instrumentation, CORS
 │   ├── core/                   # config.py · telemetry.py · llama_client.py
 │   ├── api/v1/                 # health · chat · ingest · telemetry · router aggregator
-│   ├── pipeline/               # orchestrator · heuristics · router · cache
+│   ├── pipeline/               # orchestrator · tabularity · router · cache
 │   ├── rags/                   # base.py · relational.py · vectorial.py · graph.py
 │   ├── ingest/                 # watcher · loaders · ocr · chunking
 │   └── schemas/                # pydantic DTOs (chat, ingest, telemetry)
