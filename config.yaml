@@ -122,7 +122,7 @@ rags:
 # ---------- Âncoras do Roteador (treinam o roteador sem escrever código) ----------
 router:
   tau_heuristic: 0.8
-  tau_high: 0.62
+  tau_high: 0.45
   tau_low: 0.35
   delta_margin: 0.08
   llm_judge_enabled: true
@@ -166,6 +166,24 @@ cache:
   enabled: true
   similarity_threshold: 0.80
   max_entries: 10000
+
+orchestrator:
+  top_k: 5
+  answer_prompt: |
+    Answer the question using ONLY the context below.
+
+    Context:
+    {context}
+
+    Question: {question}
+
+    Rules:
+    - Use only facts present in the context. Never invent data.
+    - If the context does not answer the question, say so plainly.
+    - Reply in the same language as the question.
+    - Keep any table in Markdown format.
+
+    Answer:
 
 ingest:
   watch_interval_s: 2.0
