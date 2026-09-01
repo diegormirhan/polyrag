@@ -9,7 +9,7 @@ import networkx as nx
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, chat, embed
 from app.core.vectors import dot, normalize
-from app.rags.base import RAGBase
+from app.rags.base import RAGBase, content_id
 
 _JSON_FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 _LEADING_ARTICLE = re.compile(r"^(?:o|a|os|as|um|uma)\s+", re.IGNORECASE)
@@ -90,7 +90,7 @@ class GraphRAG(RAGBase):
         if not triples:
             return
 
-        chunk_id = f"chunk_{self._graph.number_of_nodes()}"
+        chunk_id = f"chunk_{content_id(content)}"
         self._graph.add_node(chunk_id, kind="chunk", text=content)
 
         for subject, relation, obj in triples:

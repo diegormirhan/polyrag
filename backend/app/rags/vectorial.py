@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import uuid
-
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, embed
-from app.rags.base import RAGBase
+from app.rags.base import RAGBase, content_id
 
 
 class VectorialRAG(RAGBase):
@@ -36,7 +34,7 @@ class VectorialRAG(RAGBase):
         vector = (await embed(self._clients.embeddings, [content]))[0]
         await self._client.upsert(
             collection_name=self._settings.qdrant.collection,
-            points=[PointStruct(id=str(uuid.uuid4()), vector=vector, payload={"text": content})],
+            points=[PointStruct(id=content_id(content), vector=vector, payload={"text": content})],
         )
 
     async def query(self, question: str, top_k: int = 5) -> list[dict]:
