@@ -5,6 +5,7 @@ __pycache__/
 .eggs/
 .pytest_cache/
 .ruff_cache/
+.cache
 
 # Virtual environment
 .venv/
@@ -21,6 +22,7 @@ bin/llama-server/
 bin/qdrant/
 
 # Generated data (created by ingestion / RAGs at runtime)
+.qdrant-initialized
 data/sql/*.db
 data/qdrant/
 data/graph/*.json
