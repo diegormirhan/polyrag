@@ -99,6 +99,10 @@ class CacheConfig(BaseModel):
     similarity_threshold: float  # cosseno mínimo pra considerar cache hit (CAG)
     max_entries: int
 
+class OrchestratorConfig(BaseModel):
+    top_k: int          # quantos resultados cada RAG devolve pro contexto do LLM
+    answer_prompt: str  # template com {context} e {question}
+
 class IngestConfig(BaseModel):
     watch_interval_s: float
     semantic_threshold: float  # cosseno mínimo entre frases consecutivas pra continuar no mesmo chunk
@@ -125,6 +129,7 @@ class Settings(BaseModel):
     rags: RagsConfig
     router: RouterConfig
     cache: CacheConfig
+    orchestrator: OrchestratorConfig
     ingest: IngestConfig
     telemetry: TelemetryConfig
 
