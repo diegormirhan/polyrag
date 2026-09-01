@@ -42,10 +42,11 @@ class EmbeddingsModelsConfig(BaseModel):
     dimensions: int  # tamanho do vetor de saída (1024 pro BGE-M3) — usado pelo Qdrant e pelo FAISS
 
 class LlamaConfig(BaseModel):
-    bin_path: Path  # caminho do executável llama-server.exe, compartilhado pelas 3 instâncias
+    bin_path: Path  # caminho do executável llama-server.exe, compartilhado pelas 4 instâncias
     llm: LlmModelConfig
     ocr: OcrModelConfig
     embeddings: EmbeddingsModelsConfig
+    judge: LlmModelConfig  # Prometheus 2 — juiz dedicado do roteador (mesmo shape do llm, sem mmproj)
 
 class QdrantConfig(BaseModel):
     bin_path: Path
@@ -61,6 +62,22 @@ class PathsConfig(BaseModel):
     sqlite_db: str        # RAG 1
     graph_store: str      # RAG 3 (grafo persistido em JSON)
 
+# Prompts de cada RAG ficam aqui (mesma regra do ocr_prompt/llm_judge_prompt:
+# nada de prompt hardcoded no código). RAG 2 e RAG 3 entram nesta seção conforme
+# forem precisando dos seus próprios prompts.
+class RelationalRagConfig(BaseModel):
+    text_to_sql_prompt: str  # template com {schema} e {question}
+
+class GraphRagConfig(BaseModel):
+    entity_match_threshold: float  # cosseno mínimo pra casar entidade da pergunta com nó do grafo
+    pagerank_damping: float        # fator d do PageRank (ver seção 4.6 do CLAUDE.md)
+    openie_prompt: str             # ingestão: {text} -> triplas em JSON (texto declarativo)
+    ner_prompt: str                # busca: {text} -> lista de entidades (pergunta não declara fato)
+
+class RagsConfig(BaseModel):
+    relational: RelationalRagConfig
+    graph: GraphRagConfig
+
 # Cada rota do roteador semântico carrega uma descrição (usada pelo LLM-juiz na zona
 # cinzenta) e uma lista de frases-âncora (usadas para gerar os vetores de referência
 # contra os quais o cosseno é calculado — é assim que o roteador é "treinado" via YAML).
@@ -69,10 +86,12 @@ class RouteConfig(BaseModel):
     utterances: list[str]
 
 class RouterConfig(BaseModel):
+    tau_heuristic: float  # score mínimo do Estágio 1 (tabularity_score) pra decidir "relational" sem embedding
     tau_high: float       # score mínimo do top1 pra aceitar a rota direto
     tau_low: float          # abaixo disso, nem tenta: cai no fallback vectorial
     delta_margin: float      # margem mínima (top1 - top2) pra considerar a decisão "confiante"
     llm_judge_enabled: bool   # permite desligar o juiz LLM e forçar decisão só por threshold
+    llm_judge_prompt: str
     routes: dict[str, RouteConfig]  # chave = nome da rota ("relational", "vectorial", "graph")
 
 class CacheConfig(BaseModel):
@@ -82,8 +101,8 @@ class CacheConfig(BaseModel):
 
 class IngestConfig(BaseModel):
     watch_interval_s: float
-    chunk_size: int
-    chunk_overlap: int
+    semantic_threshold: float  # cosseno mínimo entre frases consecutivas pra continuar no mesmo chunk
+    min_chunk_chars: int  # piso de tamanho: abaixo disso, força continuar no mesmo grupo mesmo com cosseno baixo
     ocr_prompt: str
     vision_extensions: list[str]   # vão pro GLM-OCR antes de qualquer outra coisa
     text_extensions: list[str]     # lidos como string crua
@@ -103,6 +122,7 @@ class Settings(BaseModel):
     llama: LlamaConfig
     qdrant: QdrantConfig
     paths: PathsConfig
+    rags: RagsConfig
     router: RouterConfig
     cache: CacheConfig
     ingest: IngestConfig

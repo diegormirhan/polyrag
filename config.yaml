@@ -4,14 +4,14 @@ server:
 
 llama:
   bin_path: bin/llama-server/llama-server.exe
-  llm:            # sempre de pé (responde perguntas)
-    model_path: models/Qwen3-14B-Q4_K_M.gguf
+  llm:            # Qwen3-8B — raciocínio/SQL/NER/resposta final
+    model_path: models/Qwen3-8B-Q4_K_M.gguf
     host: 127.0.0.1
     port: 8080
     ctx_size: 16384
     n_gpu_layers: -1
     temperature: 0.2
-  ocr:            # GLM-OCR ~830M params (~2.3GB VRAM) — fica de pé
+  ocr:            # GLM-OCR ~830M params (~2.3GB VRAM) — candidato a "sob demanda"
     model_path: models/GLM-OCR-Q8_0.gguf
     mmproj_path: models/mmproj-GLM-OCR-Q8_0.gguf
     host: 127.0.0.1
@@ -25,9 +25,16 @@ llama:
     ctx_size: 8192
     n_gpu_layers: -1
     dimensions: 1024
+  judge:          # Prometheus 2 — juiz dedicado do roteador (Estágio 3, zona cinzenta)
+    model_path: models/prometheus-7b-v2.0.Q4_K_M.gguf
+    host: 127.0.0.1
+    port: 8083
+    ctx_size: 4096
+    n_gpu_layers: -1
+    temperature: 0.0
 
 qdrant:
-  bin_path: runtime/qdrant/qdrant.exe
+  bin_path: bin/qdrant/qdrant.exe
   host: 127.0.0.1
   port: 6333
   collection: polyrag_docs
@@ -40,12 +47,100 @@ paths:
   sqlite_db: data/sql/relacional.db
   graph_store: data/graph/graph.json
 
+rags:
+  relational:
+    text_to_sql_prompt: |
+      You are translating a question into a single SQLite SELECT query.
+
+      Database schema:
+      {schema}
+
+      Question: {question}
+
+      Rules:
+      - Reply with ONLY the SQL query, no explanation, no markdown fences.
+      - Use ONLY SELECT. Never INSERT, UPDATE, DELETE, DROP or ALTER.
+      - Use only tables and columns that exist in the schema above.
+
+      SQL:
+  graph:
+    entity_match_threshold: 0.6   # cosseno mínimo pra casar entidade da pergunta com nó do grafo
+    pagerank_damping: 0.85        # fator d do PageRank (0.85 = valor clássico do paper do Google)
+    openie_prompt: |
+      Extract subject-relation-object triples from the text.
+
+      Subject and object must be SHORT ENTITY NAMES (a proper noun or a noun phrase
+      of at most 3 words). Never put a whole clause in the subject or object field.
+      Copy the entity name exactly as written in the text — never rename, abbreviate,
+      or replace it with a description.
+
+      Example text:
+      A Empresa Delta assina o Contrato Z com o Cliente Omega, que exige entrega mensal.
+
+      Example JSON:
+      [{{"subject": "Empresa Delta", "relation": "signs", "object": "Contrato Z"}},
+       {{"subject": "Contrato Z", "relation": "signed_with", "object": "Cliente Omega"}},
+       {{"subject": "Contrato Z", "relation": "requires", "object": "entrega mensal"}}]
+
+      Note how "Empresa Delta" drops the article "A", and how the sentence produced
+      three separate triples instead of one triple with a long object.
+
+      Text:
+      {text}
+
+      Rules:
+      - Reply with ONLY a JSON array, no explanation, no markdown fences.
+      - Drop leading articles (o, a, os, as, um, uma) from entity names.
+      - Use short snake_case verbs for the relation.
+      - Extract only relationships explicitly stated in the text. Do not infer.
+      - If there are no clear relationships, reply with an empty array: []
+
+      JSON:
+    ner_prompt: |
+      List the named entities mentioned in the question below.
+
+      Entities are the concrete things the question is about: people, companies,
+      products, contracts, documents, processes. Not verbs, not generic words.
+
+      Example question:
+      Se a Empresa Delta atrasar, o Contrato Z e afetado?
+
+      Example JSON:
+      ["Empresa Delta", "Contrato Z"]
+
+      Question:
+      {text}
+
+      Rules:
+      - Reply with ONLY a JSON array of strings, no explanation, no markdown fences.
+      - Copy each entity name exactly as written in the question.
+      - Drop leading articles (o, a, os, as, um, uma).
+      - If there are no named entities, reply with an empty array: []
+
+      JSON:
+
 # ---------- Âncoras do Roteador (treinam o roteador sem escrever código) ----------
 router:
+  tau_heuristic: 0.8
   tau_high: 0.62
   tau_low: 0.35
   delta_margin: 0.08
   llm_judge_enabled: true
+  llm_judge_prompt: |
+    Follow these steps to decide which route best matches the content below.
+    1. Identify what the content is about: tabular/numeric data, free-form narrative
+       text, or a business rule/dependency between entities.
+    2. Compare that identification against each route's description.
+    3. Choose the route that matches best.
+
+    Route "{route_a}": {desc_a}
+    Route "{route_b}": {desc_b}
+
+    Content:
+    {text}
+
+    Reply with ONLY the exact route name you chose, nothing else.
+    Chosen route:
   routes:
     relational:
       description: "Dados tabulares, planilhas, finanças, logs estruturados"
@@ -74,9 +169,9 @@ cache:
 
 ingest:
   watch_interval_s: 2.0
-  chunk_size: 512
-  chunk_overlap: 64
-  ocr_prompt: "Extraia todo o texto visível desta imagem. Reproduza tabelas em Markdown."
+  semantic_threshold: 0.5
+  min_chunk_chars: 80
+  ocr_prompt: "OCR"
   vision_extensions: [".png", ".jpg", ".jpeg", ".webp", ".bmp"]
   text_extensions: [".txt", ".md"]
   table_extensions: [".csv", ".xlsx"]
