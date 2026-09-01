@@ -18,6 +18,7 @@ dependencies = [
     "qdrant-client>=1.19.0",
     "networkx>=3.6.1",
     "scipy>=1.18.1",
+    "faiss-cpu==1.15.0",
 ]
 
 [dependency-groups]
