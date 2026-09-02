@@ -38,6 +38,7 @@ llama:
 
 qdrant:
   bin_path: bin/qdrant/qdrant.exe
+  storage_path: data/qdrant
   host: 127.0.0.1
   port: 6333
   collection: polyrag_docs

@@ -54,6 +54,7 @@ class LlamaConfig(BaseModel):
 
 class QdrantConfig(BaseModel):
     bin_path: Path
+    storage_path: Path  # onde o Qdrant persiste as coleções (passado via env na subida)
     host: str
     port: int
     collection: str
