@@ -522,6 +522,14 @@ Responda apenas JSON: {"correct": 0|1, "justification": "..."}
 - **Esquerda — Chat:** streaming token a token (WS), Markdown renderizado, tabelas SQL formatadas.
 - **Direita — Painel de Observabilidade:** consome o WS de telemetria e desenha, ao vivo, a **linha do tempo dos spans** (Cache → Router → RAG → LLM) com latência de cada etapa, a rota escolhida com sua margem, e hit/miss do cache. É a "caixa de vidro": o usuário *vê a matemática acontecendo*.
 
+**Link para o Swagger UI (`/docs`) visível na interface.** O FastAPI já gera a documentação
+interativa da API automaticamente a partir dos schemas Pydantic — não custa nada além de expor o
+link. Vale porque é a interface **padrão de mercado** para explorar uma API: quem abrir o projeto
+consegue disparar `POST /api/v1/chat` ou `POST /api/v1/ingest` direto do navegador, ver o schema de
+request/response e testar sem Postman nem curl. Numa avaliação de portfólio, isso mostra que a API
+é um **contrato versionado e documentado**, não um punhado de endpoints improvisados atrás de um
+frontend. Colocar junto o `/redoc` (também automático) é opcional.
+
 ---
 
 ## 8. Estrutura de pastas e setup
@@ -544,7 +552,7 @@ polyrag/
 │   ├── llama/                  # llama-server.exe (Vulkan)
 │   └── qdrant/qdrant.exe
 ├── scripts/
-│   ├── start_llm_servers.ps1   # sobe os 3 servidores (LLM + OCR + embeddings)
+│   ├── start_llm_servers.py    # sobe os 4 servidores lendo portas/flags do config.yaml
 │   ├── start_qdrant.ps1 · start_backend.ps1 · stop_all.ps1
 ├── backend/app/
 │   ├── main.py                 # app factory + lifespan + instrumentação OTel
