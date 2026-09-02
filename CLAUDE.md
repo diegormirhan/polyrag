@@ -552,8 +552,7 @@ polyrag/
 │   ├── llama/                  # llama-server.exe (Vulkan)
 │   └── qdrant/qdrant.exe
 ├── scripts/
-│   ├── start_llm_servers.py    # sobe os 4 servidores lendo portas/flags do config.yaml
-│   ├── start_qdrant.ps1 · start_backend.ps1 · stop_all.ps1
+│   ├── start_servers.py        # sobe os 4 llama-server + Qdrant, tudo do config.yaml
 ├── backend/app/
 │   ├── main.py                 # app factory + lifespan + instrumentação OTel
 │   ├── core/                   # config.py · telemetry.py (exporter WS) · llama_client.py
