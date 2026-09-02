@@ -19,6 +19,7 @@ dependencies = [
     "networkx>=3.6.1",
     "scipy>=1.18.1",
     "faiss-cpu==1.15.0",
+    "opentelemetry-sdk>=1.44.0",
 ]
 
 [dependency-groups]
