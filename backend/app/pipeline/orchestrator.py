@@ -11,9 +11,7 @@ from app.core.vectors import normalize
 from app.pipeline.cache import SemanticCache
 from app.pipeline.router import RouteDecision, Router
 from app.rags.base import RAGBase
-from app.rags.graph import GraphRAG
-from app.rags.relational import RelationalRAG
-from app.rags.vectorial import VectorialRAG
+from app.rags.factory import build_rags
 
 
 @dataclass(frozen=True)
@@ -51,11 +49,7 @@ class Orchestrator:
     @classmethod
     async def create(cls, clients: LlamaClients, settings: Settings | None = None) -> "Orchestrator":
         settings = settings or load_config()
-        rags: dict[str, RAGBase] = {
-            "relational": RelationalRAG(clients, settings),
-            "vectorial": await VectorialRAG.create(clients, settings),
-            "graph": GraphRAG.load(clients, settings),
-        }
+        rags = await build_rags(clients, settings)
         # A disabled cache is simply no cache: one source of truth, instead of an
         # `enabled` flag checked again at every call site.
         cache = SemanticCache(settings) if settings.cache.enabled else None
