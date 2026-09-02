@@ -59,6 +59,10 @@ class Orchestrator:
         router = await Router.create(clients, settings)
         return cls(clients, router, cache, rags, settings)
 
+    def clear_cache(self) -> None:
+        if self._cache is not None:
+            self._cache.clear()
+
     async def answer(self, question: str) -> ChatResult:
         # Spans live here rather than inside cache.py and router.py: those stay pure
         # (the cache is testable with handmade vectors, no server involved), and
