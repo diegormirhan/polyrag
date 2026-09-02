@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
+from opentelemetry import trace
 
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients
@@ -15,6 +16,8 @@ from app.ingest.watcher import FileKind, IngestFile, Watcher
 from app.pipeline.router import Router
 from app.rags.base import RAGBase
 from app.rags.factory import build_rags
+
+_tracer = trace.get_tracer("polyrag.pipeline")
 
 
 @dataclass(frozen=True)
@@ -81,17 +84,23 @@ class Ingestor:
         return [await self.ingest_file(f) for f in await self._watcher.poll_once()]
 
     async def ingest_file(self, ingest_file: IngestFile) -> IngestReport:
-        if ingest_file.kind == FileKind.TABLE:
-            # A spreadsheet is tabular by definition, so routing it would be asking
-            # a question whose answer is already known. Only chunks get routed.
-            frame = loaders.load_table(ingest_file.path)
-            await self._rags["relational"].ingest((frame, _table_name(ingest_file.path)))
-            routes = ["relational"]
-        else:
-            routes = await self._route_chunks(await self._to_text(ingest_file), ingest_file.path)
+        with _tracer.start_as_current_span("pipeline.ingest") as span:
+            span.set_attributes({
+                "ingest.file": ingest_file.path.name,
+                "ingest.kind": ingest_file.kind.value,
+            })
+            if ingest_file.kind == FileKind.TABLE:
+                # A spreadsheet is tabular by definition, so routing it would be asking
+                # a question whose answer is already known. Only chunks get routed.
+                frame = loaders.load_table(ingest_file.path)
+                await self._rags["relational"].ingest((frame, _table_name(ingest_file.path)))
+                routes = ["relational"]
+            else:
+                routes = await self._route_chunks(await self._to_text(ingest_file), ingest_file.path)
 
-        self._archive(ingest_file.path)
-        return IngestReport(ingest_file.path, routes)
+            span.set_attributes({"ingest.chunks": len(routes), "ingest.routes": routes})
+            self._archive(ingest_file.path)
+            return IngestReport(ingest_file.path, routes)
 
     async def _to_text(self, ingest_file: IngestFile) -> str:
         if ingest_file.kind == FileKind.VISION:
@@ -103,8 +112,22 @@ class Ingestor:
     async def _route_chunks(self, text: str, path: Path) -> list[str]:
         routes = []
         for index, chunk in enumerate(await chunks(text, self._clients, self._settings)):
-            decision = await self._router.route(chunk)
-            routes.append(await self._store(decision.route, chunk, path, index))
+            with _tracer.start_as_current_span("pipeline.ingest.chunk") as span:
+                decision = await self._router.route(chunk)
+                stored_in = await self._store(decision.route, chunk, path, index)
+                # router.route and ingest.stored_in are separate attributes on purpose:
+                # when they disagree, a chunk was sent to `relational` and turned out to
+                # hold no table. That divergence is the interesting signal, not an error.
+                span.set_attributes({
+                    "chunk.index": index,
+                    "chunk.chars": len(chunk),
+                    "router.route": decision.route,
+                    "router.decision_stage": decision.decision_stage,
+                    "router.margin": decision.margin,
+                    "ingest.stored_in": stored_in,
+                    **{f"router.score.{r}": s for r, s in decision.scores.items()},
+                })
+            routes.append(stored_in)
         return routes
 
     async def _store(self, route: str, chunk: str, path: Path, index: int) -> str:
