@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
+from opentelemetry import trace
+_tracer = trace.get_tracer("polyrag.pipeline")
 
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, chat, embed
@@ -13,6 +15,7 @@ from app.pipeline.router import RouteDecision, Router
 from app.rags.base import RAGBase
 from app.rags.factory import build_rags
 
+_tracer = trace.get_tracer("polyrag.pipeline")
 
 @dataclass(frozen=True)
 class ChatResult:
@@ -57,33 +60,53 @@ class Orchestrator:
         return cls(clients, router, cache, rags, settings)
 
     async def answer(self, question: str) -> ChatResult:
-        vector = normalize((await embed(self._clients.embeddings, [question]))[0])
+        # Spans live here rather than inside cache.py and router.py: those stay pure
+        # (the cache is testable with handmade vectors, no server involved), and
+        # RouteDecision already carries every number the panel needs.
+        with _tracer.start_as_current_span("pipeline.chat"):
+            vector = normalize((await embed(self._clients.embeddings, [question]))[0])
 
-        if self._cache is not None:
-            cached = self._cache.lookup(vector)
+            with _tracer.start_as_current_span("pipeline.cache") as span:
+                cached = self._cache.lookup(vector) if self._cache is not None else None
+                span.set_attribute("cache.hit", cached is not None)
             if cached is not None:
                 return ChatResult(cached, cache_hit=True, decision=None, sources=[])
 
-        # On a miss the router embeds the question a second time. Left as is: this
-        # path already costs seconds of SQL/LLM work, so one extra embedding call is
-        # noise, and keeping route() self-contained is worth more than the microopt.
-        decision = await self._router.route(question)
-        results = await self._rags[decision.route].query(
-            question, top_k=self._settings.orchestrator.top_k
-        )
-        if not results:
-            return ChatResult("Não encontrei nada nas bases sobre isso.", False, decision, [])
+            # On a miss the router embeds the question a second time. Left as is: this
+            # path already costs seconds of SQL/LLM work, so one extra embedding call is
+            # noise, and keeping route() self-contained is worth more than the microopt.
+            with _tracer.start_as_current_span("pipeline.router") as span:
+                decision = await self._router.route(question)
+                span.set_attributes({
+                    "router.route": decision.route,
+                    "router.decision_stage": decision.decision_stage,
+                    "router.score_top1": decision.score_top1,
+                    "router.score_top2": decision.score_top2,
+                    "router.margin": decision.margin,
+                    # Flattened one key per route: OTel attributes take primitives,
+                    # never a dict.
+                    **{f"router.score.{r}": s for r, s in decision.scores.items()},
+                })
 
-        prompt = self._settings.orchestrator.answer_prompt.format(
-            context=_format_context(decision.route, results),
-            question=question,
-        )
-        answer = await chat(
-            self._clients.llm,
-            [{"role": "user", "content": prompt}],
-            temperature=self._settings.llama.llm.temperature,
-        )
+            with _tracer.start_as_current_span(f"pipeline.rag.{decision.route}") as span:
+                results = await self._rags[decision.route].query(
+                    question, top_k=self._settings.orchestrator.top_k
+                )
+                span.set_attribute("rag.results", len(results))
 
-        if self._cache is not None:
-            self._cache.store(vector, answer)
-        return ChatResult(answer, False, decision, results)
+            if not results:
+                return ChatResult("Não encontrei nada nas bases sobre isso.", False, decision, [])
+
+            prompt = self._settings.orchestrator.answer_prompt.format(
+                context=_format_context(decision.route, results),
+                question=question,
+            )
+            answer = await chat(
+                self._clients.llm,
+                [{"role": "user", "content": prompt}],
+                temperature=self._settings.llama.llm.temperature,
+            )
+
+            if self._cache is not None:
+                self._cache.store(vector, answer)
+            return ChatResult(answer, False, decision, results)
