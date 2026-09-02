@@ -6,7 +6,6 @@ import pandas as pd
 from docx import Document
 from pptx import Presentation
 from pypdf import PdfReader
-from app.ingest.watcher import FileKind, IngestFile
 
 def load_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
@@ -42,12 +41,3 @@ def _load_pptx(path: Path) -> str:
             if shape.has_text_frame:
                 lines.append(shape.text_frame.text)
     return "\n".join(lines)
-
-def load(ingest_file: IngestFile) -> str | pd.DataFrame:
-    if ingest_file.kind == FileKind.TEXT:
-        return load_text(ingest_file.path)
-    if ingest_file.kind == FileKind.TABLE:
-        return load_table(ingest_file.path)
-    if ingest_file.kind == FileKind.DOCUMENT:
-        return load_document(ingest_file.path)
-    raise ValueError(f"loaders.py doesn't handle kind={ingest_file.kind} yet")
