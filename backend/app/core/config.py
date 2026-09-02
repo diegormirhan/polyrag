@@ -24,6 +24,9 @@ class LlmModelConfig(BaseModel):
     ctx_size: int
     n_gpu_layers: int
     temperature: float = 0.2  # baixa de propósito: determinismo (ver seção 0.1 do CLAUDE.md)
+    # -1 = nunca dorme. > 0 faz o llama-server devolver a VRAM depois de N segundos
+    # ocioso e recarregar na próxima requisição — medido: o GLM-OCR devolve 2.08GB.
+    sleep_idle_seconds: int = -1
 
 class OcrModelConfig(BaseModel):
     model_path: Path
@@ -32,6 +35,7 @@ class OcrModelConfig(BaseModel):
     port: int
     ctx_size: int
     n_gpu_layers: int
+    sleep_idle_seconds: int = -1  # ver LlmModelConfig
 
 class EmbeddingsModelsConfig(BaseModel):
     model_path: Path
