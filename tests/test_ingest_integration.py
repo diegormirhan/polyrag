@@ -1,39 +1,38 @@
+"""Drop files into data_drop/ and watch each one land in the right base.
+
+This is the first line of the Definition of Done. Run directly (not pytest): it
+needs the llama-servers and Qdrant up.
+
+Destructive on purpose: ingested files are MOVED into data/processed/, which is
+exactly how the watcher knows they are done. Run it twice and the second pass
+finds nothing — that is the expected behaviour, not a failure.
+"""
+
 import asyncio
+from collections import Counter
 
 from app.core.llama_client import LlamaClients
-from app.ingest import chunking, loaders, ocr
-from app.ingest.watcher import FileKind, Watcher
+from app.ingest.watcher import Watcher
+from app.pipeline.ingestor import Ingestor
 
 
 async def main() -> None:
-    watcher = Watcher()
-    files = await watcher.poll_once()
-    print(f"Encontrados {len(files)} arquivos: {[f.path.name for f in files]}")
+    pending = await Watcher().poll_once()
+    if not pending:
+        print("data_drop/ vazio (ou tudo ja processado) — nada a fazer")
+        return
 
-    clients = LlamaClients()
+    print(f"{len(pending)} arquivo(s): {[f.path.name for f in pending]}\n")
+    ingestor = await Ingestor.create(LlamaClients())
 
-    for f in files:
-        print(f"\n=== {f.path.name} ({f.kind.value}) ===")
+    totals = Counter()
+    for ingest_file in pending:
+        report = await ingestor.ingest_file(ingest_file)
+        totals.update(report.routes)
+        print(f"{report.path.name}  ({ingest_file.kind.value})")
+        print(f"  {len(report.routes)} chunk(s) -> {report.routes}\n")
 
-        if f.kind == FileKind.VISION:
-            text = await ocr.extract_text(f.path, clients)
-            print(f"Texto extraído ({len(text)} chars):\n{text}")
-            pieces = await chunking.chunks(text, clients)
-            print(f"-> {len(pieces)} chunks")
-            for i, p in enumerate(pieces):
-                print(f"--- chunk {i} ({len(p)} chars) ---\n{p}")
-
-        elif f.kind == FileKind.TABLE:
-            df = loaders.load(f)
-            print(df)
-
-        else:
-            text = loaders.load(f)
-            print(f"Texto ({len(text)} chars):\n{text}")
-            pieces = await chunking.chunks(text, clients)
-            print(f"-> {len(pieces)} chunks")
-            for i, p in enumerate(pieces):
-                print(f"--- chunk {i} ({len(p)} chars) ---\n{p}")
+    print(f"===== destino final: {dict(totals)} =====")
 
 
 if __name__ == "__main__":
