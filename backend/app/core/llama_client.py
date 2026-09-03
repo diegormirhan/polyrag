@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import AsyncIterator
+
 from openai import AsyncOpenAI
 from opentelemetry import trace
 
@@ -51,6 +53,30 @@ async def chat(
                 "llm.completion_tokens": response.usage.completion_tokens,
             })
         return content
+
+
+async def chat_stream(
+    client: AsyncOpenAI,
+    messages: list[dict],
+    temperature: float = 0.2,
+    enable_thinking: bool = False,
+) -> AsyncIterator[str]:
+    """Same request as chat(), yielded piece by piece as the model writes it."""
+    with _tracer.start_as_current_span("llama.chat.stream") as span:
+        stream = await client.chat.completions.create(
+            model="local",
+            messages=messages,
+            temperature=temperature,
+            stream=True,
+            stream_options={"include_usage": True},
+            extra_body={"chat_template_kwargs": {"enable_thinking": enable_thinking}},
+        )
+        async for chunk in stream:
+            # The usage chunk arrives last and carries no choices of its own.
+            if chunk.usage is not None:
+                span.set_attribute("llm.completion_tokens", chunk.usage.completion_tokens)
+            if chunk.choices and (delta := chunk.choices[0].delta.content):
+                yield delta
 
 
 async def embed(client: AsyncOpenAI, texts: list[str]) -> list[list[float]]:
