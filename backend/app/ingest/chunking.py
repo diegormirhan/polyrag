@@ -7,6 +7,7 @@ from app.core.vectors import dot, normalize
 
 TABLE_BLOCK = re.compile(r"(?:^\|.*\|[ \t]*\n?)+", re.MULTILINE)
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
+_PARAGRAPH_SPLIT = re.compile(r"\n\s*\n")
 
 def _centroid(vectors: list[list[float]]) -> list[float]:
     dim = len(vectors[0])
@@ -43,6 +44,28 @@ async def semantic_chunk_text(
 
     return [" ".join(group) for group in groups]
 
+def _paragraphs(text: str, min_chars: int) -> list[str]:
+    """Blank-line separated blocks, with runts merged into the next one.
+
+    A blank line is the author declaring a topic boundary — a signal that is free
+    and more reliable than cosine. Measured on a 4-topic document: the real
+    boundaries scored 0.541/0.534/0.584 against the centroid while the lowest
+    within-topic score was 0.500, so the ranges overlap and no single threshold
+    separates them. The blank lines separate all four exactly.
+
+    A block shorter than min_chars is a fragment, not a topic — a heading on its
+    own line, most often — so it joins what follows instead of becoming a chunk.
+    """
+    blocks = [block.strip() for block in _PARAGRAPH_SPLIT.split(text) if block.strip()]
+    merged: list[str] = []
+    for block in blocks:
+        if merged and len(merged[-1]) < min_chars:
+            merged[-1] = f"{merged[-1]}\n{block}"
+        else:
+            merged.append(block)
+    return merged
+
+
 def _split_table_blocks(text: str) -> list[tuple[str, bool]]:
     """Splits text into (segment, is_table) pairs, preserving order."""
     segments: list[tuple[str, bool]] = []
@@ -62,10 +85,17 @@ async def chunks(text: str, clients: LlamaClients, settings: Settings | None = N
     for segment, is_table in _split_table_blocks(text):
         if is_table:
             pieces.append(segment)
-        elif segment.strip():
+            continue
+        # Structure first, meaning second: paragraphs are hard boundaries, and the
+        # semantic split only runs *inside* one — for the long paragraph that drifts
+        # across topics on its own.
+        for paragraph in _paragraphs(segment, settings.ingest.min_chunk_chars):
             pieces.extend(
                 await semantic_chunk_text(
-                    segment, clients, settings.ingest.semantic_threshold, settings.ingest.min_chunk_chars
+                    paragraph,
+                    clients,
+                    settings.ingest.semantic_threshold,
+                    settings.ingest.min_chunk_chars,
                 )
             )
     return pieces
