@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import deque
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from app.api.v1.deps import get_ingestor, get_jobs, get_settings
 from app.core.config import Settings
@@ -26,7 +26,18 @@ async def ingest(
     uploaded file and a file dropped in by hand take exactly the same path — one
     code path to reason about, one to keep working.
     """
-    destination = Path(settings.paths.data_drop) / Path(file.filename or "upload").name
+    name = Path(file.filename or "upload").name
+    # The watcher defines "new" as "not already in data/processed", so uploading a
+    # known name used to write the file into the hot folder, ingest nothing, return
+    # an empty list, and leave the upload sitting there forever. Refusing up front
+    # says what happened and leaves no orphan behind.
+    if (Path(settings.paths.processed) / name).exists():
+        raise HTTPException(
+            status_code=409,
+            detail=f"{name} has already been ingested. Rename it to ingest a new version.",
+        )
+
+    destination = Path(settings.paths.data_drop) / name
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_bytes(await file.read())
 

@@ -2,7 +2,7 @@
 	import { api, type Corpus, type Route } from '$lib/api';
 
 	let corpus = $state<Corpus | null>(null);
-	let failed = $state(false);
+	let failed = $state<string | null>(null);
 	let dragging = $state(false);
 	let picker: HTMLInputElement;
 	let busy = $state<string | null>(null);
@@ -16,9 +16,9 @@
 	async function load() {
 		try {
 			corpus = await api.corpus();
-			failed = false;
+			failed = null;
 		} catch {
-			failed = true;
+			failed = 'The backend is not reachable. Is uvicorn running on port 8000?';
 		}
 	}
 
@@ -31,8 +31,9 @@
 			busy = file.name;
 			try {
 				await api.ingest(file);
-			} catch {
-				failed = true;
+				failed = null;
+			} catch (error) {
+				failed = error instanceof Error ? error.message : `${file.name} could not be ingested.`;
 			}
 		}
 		busy = null;
@@ -109,7 +110,7 @@
 	/>
 
 	{#if failed}
-		<p class="failed">The backend is not reachable. Is uvicorn running on port 8000?</p>
+		<p class="failed" role="status">{failed}</p>
 	{/if}
 
 	<section class="stores">

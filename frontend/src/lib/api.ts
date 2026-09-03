@@ -66,7 +66,15 @@ export type ChatEvent =
 
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
 	const response = await fetch(path, init);
-	if (!response.ok) throw new Error(`${init?.method ?? 'GET'} ${path} → ${response.status}`);
+	if (!response.ok) {
+		// FastAPI puts the reason in `detail`. Showing "request failed" when the
+		// server already explained itself throws away the only useful part.
+		const detail = await response
+			.json()
+			.then((body) => body?.detail)
+			.catch(() => null);
+		throw new Error(detail ?? `${init?.method ?? 'GET'} ${path} → ${response.status}`);
+	}
 	return response.json();
 }
 

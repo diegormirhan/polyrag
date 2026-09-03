@@ -22,8 +22,8 @@
 				const chunks = reports.reduce((total, report) => total + report.chunks, 0);
 				const routes = [...new Set(reports.flatMap((report) => report.routes))];
 				notice = `${file.name} — ${chunks} chunk${chunks === 1 ? '' : 's'} into ${routes.join(', ')}`;
-			} catch {
-				notice = `${file.name} could not be ingested.`;
+			} catch (error) {
+				notice = error instanceof Error ? error.message : `${file.name} could not be ingested.`;
 			}
 		}
 		setTimeout(() => (notice = null), 6000);
