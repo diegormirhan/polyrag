@@ -32,3 +32,7 @@ class RAGBase(ABC):
     @abstractmethod
     async def query(self, question: str, top_k: int = 5) -> list[Any]:
         """Retrieve top_k relevant items for `question`. Shape of results is RAG-specific."""
+
+    @abstractmethod
+    async def stats(self) -> dict[str, Any]:
+        """What this backend currently holds. Each store counts different things."""

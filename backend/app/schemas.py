@@ -38,3 +38,19 @@ class ServiceHealth(BaseModel):
 class HealthResponse(BaseModel):
     ok: bool
     services: list[ServiceHealth]
+
+
+class CorpusFile(BaseModel):
+    name: str
+    size_bytes: int
+    ingested_at: float  # epoch seconds, from the file's mtime in data/processed
+    chunks: int = 0
+    routes: list[str] = Field(default_factory=list)  # where each chunk actually landed
+
+
+class CorpusResponse(BaseModel):
+    files: list[CorpusFile]
+    # One entry per route name, shaped by that store: SQL tables, vector points,
+    # graph nodes. They are deliberately not forced into a common shape — the
+    # three stores hold genuinely different things.
+    stores: dict[str, dict]

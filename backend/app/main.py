@@ -46,6 +46,7 @@ async def lifespan(app: FastAPI):
 
     app.state.orchestrator = Orchestrator(clients, router, cache, rags, settings)
     app.state.ingestor = Ingestor(clients, router, rags, settings)
+    app.state.rags = rags
     app.state.jobs = deque(maxlen=100)
 
     watcher = asyncio.create_task(_watch_data_drop(app, settings.ingest.watch_interval_s))
