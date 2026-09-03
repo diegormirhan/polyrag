@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import shutil
 from dataclasses import dataclass
@@ -100,6 +101,7 @@ class Ingestor:
 
             span.set_attributes({"ingest.chunks": len(routes), "ingest.routes": routes})
             self._archive(ingest_file.path)
+            self._record(ingest_file.path.name, routes)
             return IngestReport(ingest_file.path, routes)
 
     async def _to_text(self, ingest_file: IngestFile) -> str:
@@ -146,6 +148,20 @@ class Ingestor:
 
         await self._rags[route].ingest(chunk)
         return route
+
+    def _record(self, name: str, routes: list[str]) -> None:
+        """Persists where a file's chunks landed.
+
+        Without this the mapping lives only in the running process, so a restart
+        loses the one thing the corpus view exists to show. Rewritten whole rather
+        than appended: the file is small, and a truncated append would be worse
+        than a lost entry.
+        """
+        manifest = Path(self._settings.paths.ingest_manifest)
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        entries = json.loads(manifest.read_text(encoding="utf-8")) if manifest.exists() else {}
+        entries[name] = {"chunks": len(routes), "routes": routes}
+        manifest.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def _archive(self, path: Path) -> None:
         # Moving into data/processed/ is what marks a file as done: the watcher

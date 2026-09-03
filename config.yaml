@@ -51,6 +51,7 @@ qdrant:
 paths:
   data_drop: data_drop
   processed: data/processed
+  ingest_manifest: data/ingest_manifest.json   # arquivo -> rotas onde seus chunks caíram
   sqlite_db: data/sql/relacional.db
   graph_store: data/graph/graph.json
 

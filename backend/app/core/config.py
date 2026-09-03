@@ -64,6 +64,7 @@ class QdrantConfig(BaseModel):
 class PathsConfig(BaseModel):
     data_drop: str      # hot folder onde o usuário larga arquivos
     processed: str       # arquivos já ingeridos são movidos pra cá
+    ingest_manifest: str  # registro persistente de onde os chunks de cada arquivo pararam
     sqlite_db: str        # RAG 1
     graph_store: str      # RAG 3 (grafo persistido em JSON)
 
