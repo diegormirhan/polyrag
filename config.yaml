@@ -4,8 +4,8 @@ server:
 
 llama:
   bin_path: bin/llama-server/llama-server.exe
-  llm:            # Qwen3-8B — raciocínio/SQL/NER/resposta final
-    model_path: models/Qwen3-8B-Q4_K_M.gguf
+  llm:            # Qwen3.5-4B — raciocínio/SQL/NER/resposta final e desempate de rota
+    model_path: models/Qwen3.5-4B-Q4_K_M.gguf
     host: 127.0.0.1
     port: 8080
     ctx_size: 8192   # medido: 16384 custava 1.17GB a mais de KV cache. O maior prompt
@@ -27,14 +27,16 @@ llama:
     ctx_size: 8192
     n_gpu_layers: -1
     dimensions: 1024
-  judge:          # Prometheus 2 — juiz dedicado do roteador (Estágio 3, zona cinzenta)
-    model_path: models/prometheus-7b-v2.0.Q4_K_M.gguf
+  judge:          # Estágio 3 do roteador — aponta pro MESMO servidor do llm (porta 8080).
+                  # O Prometheus 2 dedicado saiu: modelos especializados em avaliação só
+                  # superam modelos gerais a partir de ~14B, e a medição do Dia 4 mostrou
+                  # que ele melhorou 0 decisões e corrompeu 1. Custo agora: 0 GB de VRAM.
+    model_path: models/Qwen3.5-4B-Q4_K_M.gguf
     host: 127.0.0.1
-    port: 8083
-    ctx_size: 4096
+    port: 8080
+    ctx_size: 8192
     n_gpu_layers: -1
     temperature: 0.0
-    sleep_idle_seconds: 60   # o juiz só roda na zona cinzenta — nao faz sentido ocupar 4.2GB parado
 
 qdrant:
   bin_path: bin/qdrant/qdrant.exe
@@ -70,13 +72,12 @@ rags:
   graph:
     entity_match_threshold: 0.6   # cosseno mínimo pra casar entidade da pergunta com nó do grafo
     pagerank_damping: 0.85        # fator d do PageRank (0.85 = valor clássico do paper do Google)
+    max_entity_words: 5           # acima disso é oração, não entidade — a tripla é descartada
     openie_prompt: |
       Extract subject-relation-object triples from the text.
 
-      Subject and object must be SHORT ENTITY NAMES (a proper noun or a noun phrase
-      of at most 3 words). Never put a whole clause in the subject or object field.
-      Copy the entity name exactly as written in the text — never rename, abbreviate,
-      or replace it with a description.
+      Subject and object must be SHORT ENTITY NAMES: a proper noun or a noun phrase
+      of at most 4 words, copied exactly as written in the text.
 
       Example text:
       A Empresa Delta assina o Contrato Z com o Cliente Omega, que exige entrega mensal.
@@ -86,8 +87,20 @@ rags:
        {{"subject": "Contrato Z", "relation": "signed_with", "object": "Cliente Omega"}},
        {{"subject": "Contrato Z", "relation": "requires", "object": "entrega mensal"}}]
 
-      Note how "Empresa Delta" drops the article "A", and how the sentence produced
-      three separate triples instead of one triple with a long object.
+      Three mistakes to avoid:
+
+      1. Qualifying adjectives split one thing into two.
+         WRONG: "Contrato Z valido"        RIGHT: "Contrato Z"
+         The same thing must always get the same name, or the graph breaks in half.
+
+      2. A clause is not an entity.
+         WRONG: "entrega mensal antes de qualquer aprovacao do cliente"
+         RIGHT: "entrega mensal"
+
+      3. The subject performs the action; it does not receive it.
+         Text: "O Contrato Z segue a Norma N."
+         WRONG: {{"subject": "Norma N", "relation": "followed_by", "object": "Contrato Z"}}
+         RIGHT: {{"subject": "Contrato Z", "relation": "follows", "object": "Norma N"}}
 
       Text:
       {text}

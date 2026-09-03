@@ -76,6 +76,7 @@ class RelationalRagConfig(BaseModel):
 class GraphRagConfig(BaseModel):
     entity_match_threshold: float  # cosseno mínimo pra casar entidade da pergunta com nó do grafo
     pagerank_damping: float        # fator d do PageRank (ver seção 4.6 do CLAUDE.md)
+    max_entity_words: int          # teto determinístico pro tamanho do nome de uma entidade
     openie_prompt: str             # ingestão: {text} -> triplas em JSON (texto declarativo)
     ner_prompt: str                # busca: {text} -> lista de entidades (pergunta não declara fato)
 
