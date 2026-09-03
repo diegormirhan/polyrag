@@ -26,6 +26,7 @@ bin/qdrant/
 data/sql/*.db
 data/qdrant/
 data/graph/*.json
+data/ingest_manifest.json
 data/processed/*
 !data/processed/.gitkeep
 data_drop/*
