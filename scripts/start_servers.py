@@ -1,4 +1,4 @@
-"""Starts everything the backend needs: the four llama-servers and Qdrant.
+"""Starts everything the backend needs: the llama-servers and Qdrant.
 
     uv run python scripts/start_servers.py
 
@@ -74,11 +74,17 @@ def _services(settings: Settings) -> list[Service]:
         # --parallel 1: `-c` is the TOTAL context split across slots (measured — the
         # flag changes VRAM by only 0.07GB), so with the default 4 slots a ctx_size
         # of 8192 would leave 2048 tokens per request, under what the answer path needs.
-        _llama(settings, "llm (Qwen3-8B)", llama.llm, ["--parallel", "1"]),
+        _llama(settings, "llm (Qwen3.5-4B)", llama.llm, ["--parallel", "1"]),
         _llama(settings, "ocr (GLM-OCR)", llama.ocr,
                ["--mmproj", str(llama.ocr.mmproj_path), *_sleep_flag(llama.ocr)]),
         _llama(settings, "embeddings (BGE-M3)", llama.embeddings, ["--embedding"]),
-        _llama(settings, "judge (Prometheus 2)", llama.judge, _sleep_flag(llama.judge)),
+        # The judge shares the llm's port, so it is the llm — nothing extra to start.
+        # A judge configured on its own port would get its own server again.
+        *(
+            [_llama(settings, "judge", llama.judge, _sleep_flag(llama.judge))]
+            if llama.judge.port != llama.llm.port
+            else []
+        ),
         Service(
             name="qdrant",
             probe=f"http://{qdrant.host}:{qdrant.port}/healthz",
