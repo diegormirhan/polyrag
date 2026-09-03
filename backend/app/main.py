@@ -69,7 +69,17 @@ def create_app() -> FastAPI:
     # span, which is exported, which is sent, forever. Measured before the fix: 499
     # of the 500 spans in the ring buffer were websocket sends, and every real
     # pipeline span had been pushed out of the buffer.
-    FastAPIInstrumentor.instrument_app(app, excluded_urls="api/v1/telemetry")
+    #
+    # /chat/stream for the same reason at a different scale: the ASGI layer emits a
+    # "websocket send" span per frame, so one streamed answer produced 72 of them and
+    # buried the 17 spans that describe the actual pipeline.
+    #
+    # /health is excluded because the UI polls it on a timer, and its spans were
+    # evicting the conversation's trace from the panel every 10 seconds. Chrome
+    # watching itself is noise, not observability.
+    FastAPIInstrumentor.instrument_app(
+        app, excluded_urls="api/v1/telemetry,api/v1/health,api/v1/chat/stream"
+    )
     app.include_router(api_router)
     return app
 
