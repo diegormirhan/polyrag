@@ -9,6 +9,9 @@ import pandas as pd
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, chat
 from app.rags.base import RAGBase
+from opentelemetry import trace
+
+_tracer = trace.get_tracer("polyrag.rag")
 
 # Only a single leading SELECT (or a CTE that feeds one) is allowed through.
 _SELECT_ONLY = re.compile(r"^\s*(select|with)\b", re.IGNORECASE)
@@ -54,17 +57,40 @@ class RelationalRAG(RAGBase):
             ).fetchall()
         return "\n".join(row[0] for row in rows)
 
+    async def stats(self) -> dict:
+        with sqlite3.connect(self._db_path) as conn:
+            names = [
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                )
+            ]
+            tables = [
+                # Table names come from sqlite_master, not from a request, so they
+                # cannot be attacker-controlled here; quoting still guards odd names.
+                {"name": name, "rows": conn.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]}
+                for name in names
+            ]
+        return {"tables": tables}
+
     async def generate_sql(self, question: str) -> str:
         prompt = self._settings.rags.relational.text_to_sql_prompt.format(
             schema=self.schema(),
             question=question,
         )
-        raw = await chat(self._clients.llm, [{"role": "user", "content": prompt}], temperature=0)
-        return validate_read_only(raw)
+        with _tracer.start_as_current_span("rag.relational.generate_sql") as span:
+            raw = await chat(self._clients.llm, [{"role": "user", "content": prompt}], temperature=0)
+            sql = validate_read_only(raw)
+            # The generated query on the span is the audit trail for a Text-to-SQL
+            # answer: a wrong number is explained by the SQL, not by the prose.
+            span.set_attribute("sql.query", sql)
+            return sql
 
     async def query(self, question: str, top_k: int = 5) -> list[dict]:
         sql = await self.generate_sql(question)
-        with sqlite3.connect(self._db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            rows = conn.execute(sql).fetchmany(top_k)
-        return [dict(row) for row in rows]
+        with _tracer.start_as_current_span("rag.relational.execute") as span:
+            with sqlite3.connect(self._db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                rows = conn.execute(sql).fetchmany(top_k)
+            span.set_attribute("sql.rows", len(rows))
+            return [dict(row) for row in rows]

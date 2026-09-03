@@ -4,6 +4,9 @@ import re
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, embed
 from app.core.vectors import dot, normalize
+from opentelemetry import trace
+
+_tracer = trace.get_tracer("polyrag.ingest")
 
 TABLE_BLOCK = re.compile(r"(?:^\|.*\|[ \t]*\n?)+", re.MULTILINE)
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
@@ -81,6 +84,14 @@ def _split_table_blocks(text: str) -> list[tuple[str, bool]]:
 
 async def chunks(text: str, clients: LlamaClients, settings: Settings | None = None) -> list[str]:
     settings = settings or load_config()
+    with _tracer.start_as_current_span("pipeline.chunking") as span:
+        span.set_attribute("chunking.chars", len(text))
+        pieces = await _chunk(text, clients, settings)
+        span.set_attribute("chunking.chunks", len(pieces))
+        return pieces
+
+
+async def _chunk(text: str, clients: LlamaClients, settings: Settings) -> list[str]:
     pieces: list[str] = []
     for segment, is_table in _split_table_blocks(text):
         if is_table:

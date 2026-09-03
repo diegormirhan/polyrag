@@ -5,6 +5,9 @@ from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, chat, embed
 from app.core.vectors import dot, normalize
 from app.pipeline.tabularity import tabularity_score
+from opentelemetry import trace
+
+_tracer = trace.get_tracer("polyrag.pipeline")
 
 @dataclass(frozen=True)
 class RouteDecision:
@@ -49,18 +52,23 @@ async def _ask_judge(clients: LlamaClients, text: str, route_a: str, route_b: st
 
 
 async def _llm_judge(clients: LlamaClients, text: str, route_a: str, route_b: str, settings: Settings) -> str:
-    # Position bias check: LLM judges (especially small/lightweight ones) tend to
-    # favor whichever option is listed FIRST in the prompt, regardless of merit.
-    # Ask twice with the order swapped; only trust the verdict if both agree.
-    first = await _ask_judge(clients, text, route_a, route_b, settings)
-    second = await _ask_judge(clients, text, route_b, route_a, settings)
+    # Only the judge is spanned. Stages 1 and 2 are pure arithmetic and stay
+    # untouched so the math remains unit-testable without a tracer; this call is
+    # I/O, and it is the expensive branch worth watching.
+    with _tracer.start_as_current_span("router.judge") as span:
+        # Position bias check: LLM judges (especially small/lightweight ones) tend to
+        # favor whichever option is listed FIRST in the prompt, regardless of merit.
+        # Ask twice with the order swapped; only trust the verdict if both agree.
+        first = await _ask_judge(clients, text, route_a, route_b, settings)
+        second = await _ask_judge(clients, text, route_b, route_a, settings)
+        span.set_attribute("judge.agreed", first == second)
 
-    if first == second:
-        return first
+        if first == second:
+            return first
 
-    # Disagreement between orderings signals position bias — don't trust either
-    # potentially-biased answer, fall back to the deterministic Stage 2 winner.
-    return route_a
+        # Disagreement between orderings signals position bias — don't trust either
+        # potentially-biased answer, fall back to the deterministic Stage 2 winner.
+        return route_a
 
 class Router:
     """Precomputes route anchors once; route() reuses them for every chunk/question"""

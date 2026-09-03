@@ -10,6 +10,9 @@ from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, chat, embed
 from app.core.vectors import dot, normalize
 from app.rags.base import RAGBase, content_id
+from opentelemetry import trace
+
+_tracer = trace.get_tracer("polyrag.rag")
 
 _JSON_FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 _LEADING_ARTICLE = re.compile(r"^(?:o|a|os|as|um|uma)\s+", re.IGNORECASE)
@@ -121,27 +124,50 @@ class GraphRAG(RAGBase):
 
         self.save()
 
+    async def stats(self) -> dict:
+        kinds = [data.get("kind") for _, data in self._graph.nodes(data=True)]
+        relations = sum(
+            1 for _, _, data in self._graph.edges(data=True) if data.get("relation") != "mentioned_in"
+        )
+        return {
+            "entities": kinds.count("entity"),
+            "chunks": kinds.count("chunk"),
+            "relations": relations,
+        }
+
     def _entities(self) -> list[str]:
         return [n for n, d in self._graph.nodes(data=True) if d.get("kind") == "entity"]
 
     async def _seed_entities(self, question: str) -> list[str]:
-        question_entities = set(await self._extract_entities(question))
-        graph_entities = self._entities()
-        if not question_entities or not graph_entities:
-            return []
+        # An explicit `with`, not the decorator: as a decorator on an async function
+        # the span opens when the coroutine object is created rather than when the
+        # body runs, and the recorded start time then precedes its own parent's.
+        with _tracer.start_as_current_span("rag.graph.seeds") as span:
+            question_entities = set(await self._extract_entities(question))
+            graph_entities = self._entities()
+            # graph.entities is on the span on purpose: this step embeds EVERY entity
+            # in the graph on every query, so the attribute is the early warning for
+            # a cost that grows with the corpus.
+            span.set_attributes({
+                "graph.entities": len(graph_entities),
+                "graph.question_entities": len(question_entities),
+            })
+            if not question_entities or not graph_entities:
+                return []
 
-        names = list(question_entities) + graph_entities
-        vectors = [normalize(v) for v in await embed(self._clients.embeddings, names)]
-        question_vectors = vectors[: len(question_entities)]
-        graph_vectors = vectors[len(question_entities):]
+            names = list(question_entities) + graph_entities
+            vectors = [normalize(v) for v in await embed(self._clients.embeddings, names)]
+            question_vectors = vectors[: len(question_entities)]
+            graph_vectors = vectors[len(question_entities):]
 
-        threshold = self._settings.rags.graph.entity_match_threshold
-        seeds = set()
-        for q_vector in question_vectors:
-            for name, g_vector in zip(graph_entities, graph_vectors):
-                if dot(q_vector, g_vector) >= threshold:
-                    seeds.add(name)
-        return list(seeds)
+            threshold = self._settings.rags.graph.entity_match_threshold
+            seeds = set()
+            for q_vector in question_vectors:
+                for name, g_vector in zip(graph_entities, graph_vectors):
+                    if dot(q_vector, g_vector) >= threshold:
+                        seeds.add(name)
+            span.set_attribute("graph.seeds_matched", len(seeds))
+            return list(seeds)
 
     async def query(self, question: str, top_k: int = 5) -> list[dict]:
         seeds = await self._seed_entities(question)
@@ -150,11 +176,17 @@ class GraphRAG(RAGBase):
 
         # Personalized PageRank: the random walk always teleports back to the
         # question's entities, so scores mean "relevant to THIS question".
-        scores = nx.pagerank(
-            self._graph,
-            alpha=self._settings.rags.graph.pagerank_damping,
-            personalization={seed: 1.0 for seed in seeds},
-        )
+        with _tracer.start_as_current_span("rag.graph.pagerank") as span:
+            span.set_attributes({
+                "graph.nodes": self._graph.number_of_nodes(),
+                "graph.edges": self._graph.number_of_edges(),
+                "graph.seeds": len(seeds),
+            })
+            scores = nx.pagerank(
+                self._graph,
+                alpha=self._settings.rags.graph.pagerank_damping,
+                personalization={seed: 1.0 for seed in seeds},
+            )
         chunks = [
             {"text": self._graph.nodes[node]["text"], "score": score, "seeds": seeds}
             for node, score in scores.items()

@@ -7,6 +7,9 @@ import re
 import pandas as pd
 from app.core.config import load_config
 from app.core.llama_client import LlamaClients, chat
+from opentelemetry import trace
+
+_tracer = trace.get_tracer("polyrag.ingest")
 
 _MIME_OVERRIDES = {"jpg": "jpeg"}
 _TABLE_PATTERN = re.compile(r"<table.*?</table>", re.DOTALL | re.IGNORECASE)
@@ -28,8 +31,12 @@ async def extract_text(path: Path, clients: LlamaClients) -> str:
     ]
     # temperature=0: OCR is extraction, not generation — sampling only risks
     # hallucinating a digit/character instead of reading exactly what's on the image.
-    raw_text = await chat(clients.ocr, messages, temperature=0)
-    return _html_tables_to_markdown(raw_text)
+    with _tracer.start_as_current_span("pipeline.ocr") as span:
+        span.set_attributes({"ocr.file": path.name, "ocr.bytes": len(image_b64)})
+        raw_text = await chat(clients.ocr, messages, temperature=0)
+        text = _html_tables_to_markdown(raw_text)
+        span.set_attribute("ocr.chars", len(text))
+        return text
 
 def _html_tables_to_markdown(text: str) -> str:
     def replace(match: re.Match) -> str:
