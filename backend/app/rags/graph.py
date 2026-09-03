@@ -35,13 +35,30 @@ def _load_json_array(raw: str) -> list:
     return items if isinstance(items, list) else []
 
 
-def parse_triples(raw: str) -> list[tuple[str, str, str]]:
-    """Parses the LLM's JSON array into (subject, relation, object) tuples."""
-    return [
+def parse_triples(raw: str, max_entity_words: int = 5) -> list[tuple[str, str, str]]:
+    """Parses the LLM's JSON array into (subject, relation, object) tuples.
+
+    Triples whose subject or object runs past max_entity_words are dropped: a name
+    that long is a clause, not an entity, and it becomes a graph node nothing else
+    will ever match ("anonimizacao antes de qualquer exportacao para terceiros" was
+    a real one). Enforced here rather than trusted to the prompt — a 4B model
+    ignores "at most N words" often enough to matter, and a length limit is the
+    kind of constraint that should be arithmetic, not hope.
+    """
+    triples = (
         (normalize_entity(item["subject"]), item["relation"], normalize_entity(item["object"]))
         for item in _load_json_array(raw)
         if isinstance(item, dict) and {"subject", "relation", "object"} <= item.keys()
+    )
+    return [
+        (subject, relation, obj)
+        for subject, relation, obj in triples
+        if _is_entity_name(subject, max_entity_words) and _is_entity_name(obj, max_entity_words)
     ]
+
+
+def _is_entity_name(name: str, max_words: int) -> bool:
+    return bool(name) and len(name.split()) <= max_words
 
 
 def parse_entities(raw: str) -> list[str]:
@@ -76,7 +93,7 @@ class GraphRAG(RAGBase):
     async def _extract_triples(self, text: str) -> list[tuple[str, str, str]]:
         prompt = self._settings.rags.graph.openie_prompt.format(text=text)
         raw = await chat(self._clients.llm, [{"role": "user", "content": prompt}], temperature=0)
-        return parse_triples(raw)
+        return parse_triples(raw, self._settings.rags.graph.max_entity_words)
 
     async def _extract_entities(self, question: str) -> list[str]:
         # Questions get NER, not OpenIE: a question asserts no fact, so asking for
