@@ -1,0 +1,178 @@
+/* Design tokens. Every colour, space and timing in the app resolves to one of
+   these — nothing is a one-off literal in a component. */
+
+:root {
+  /* Neutrals. Near-black on Apple's page grey rather than pure #000 on #fff:
+     full contrast at large areas reads harsh and vibrates. */
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-sunken: #ebebef;
+  --chrome: rgba(255, 255, 255, 0.72);
+
+  --text-primary: #1d1d1f;
+  --text-secondary: rgba(29, 29, 31, 0.6);
+  --text-tertiary: rgba(29, 29, 31, 0.36);
+
+  --separator: rgba(0, 0, 0, 0.08);
+  --separator-strong: rgba(0, 0, 0, 0.16);
+
+  /* One accent, used only for the thing that won: the chosen route, the focused
+     field, the active state. Three route colours would compete; one accent plus
+     neutrals makes the decision obvious at a glance. */
+  --accent: #0071e3;
+  --accent-soft: rgba(0, 113, 227, 0.1);
+  --positive: #1d8a4e;
+  --warning: #b25000;
+
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+  --shadow-overlay: 0 24px 64px rgba(0, 0, 0, 0.18);
+
+  /* Spacing in rem so the whole layout scales with the user's text size. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+
+  /* Decelerating curves: fast out of the gate, settling gently. Nothing here is
+     gesture-driven, so CSS transitions are honest — springs would earn their
+     keep only once something can be grabbed mid-flight. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-press: 120ms;
+  --duration-enter: 260ms;
+  --duration-large: 420ms;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", monospace;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-sunken: #141416;
+    --chrome: rgba(28, 28, 30, 0.72);
+
+    --text-primary: #f5f5f7;
+    --text-secondary: rgba(245, 245, 247, 0.6);
+    --text-tertiary: rgba(245, 245, 247, 0.34);
+
+    --separator: rgba(255, 255, 255, 0.1);
+    --separator-strong: rgba(255, 255, 255, 0.18);
+
+    --accent: #0a84ff;
+    --accent-soft: rgba(10, 132, 255, 0.16);
+    --positive: #30d158;
+    --warning: #ff9f0a;
+
+    --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-overlay: 0 24px 64px rgba(0, 0, 0, 0.7);
+  }
+}
+
+/* Translucency is decoration the moment it costs legibility. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --chrome: var(--surface);
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --text-secondary: var(--text-primary);
+    --separator: var(--separator-strong);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Percentage, not px: respects the browser's text-size setting. */
+  font-size: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tracking is size-specific. Large text reads too loose at default spacing and
+   wants negative tracking; small text wants a touch of positive. One global
+   letter-spacing would be wrong at one end or the other. */
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 590;
+  line-height: 1.15;
+  letter-spacing: -0.021em;
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+h2 {
+  font-size: 1.0625rem;
+  line-height: 1.3;
+  letter-spacing: -0.014em;
+}
+h3 {
+  font-size: 0.875rem;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Numbers that update in place must not shift the layout as digits change. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
