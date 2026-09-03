@@ -38,6 +38,24 @@ export interface IngestReport {
 	routes: Route[];
 }
 
+export interface CorpusFile {
+	name: string;
+	size_bytes: number;
+	ingested_at: number;
+	chunks: number;
+	routes: Route[];
+}
+
+export interface Corpus {
+	files: CorpusFile[];
+	/** Shaped per store — SQL tables, vector points, graph nodes. */
+	stores: {
+		relational?: { tables: { name: string; rows: number }[] };
+		vectorial?: { collection: string; points: number };
+		graph?: { entities: number; chunks: number; relations: number };
+	};
+}
+
 /** Events from WS /chat/stream, in the order the pipeline produces them. */
 export type ChatEvent =
 	| { type: 'cache_hit' }
@@ -54,6 +72,7 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
 	health: () => json<{ ok: boolean; services: ServiceHealth[] }>('/api/v1/health'),
+	corpus: () => json<Corpus>('/api/v1/corpus'),
 	traces: () => json<Span[]>('/api/v1/telemetry/traces'),
 	jobs: () => json<IngestReport[]>('/api/v1/ingest/jobs'),
 	clearCache: () => fetch('/api/v1/cache', { method: 'DELETE' }),

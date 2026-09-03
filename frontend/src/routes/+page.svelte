@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { api, streamAnswer, watchSpans, type RouteDecision, type Source, type Span } from '$lib/api';
+	import { streamAnswer, type RouteDecision, type Source } from '$lib/api';
 	import Composer from '$lib/components/Composer.svelte';
 	import Conversation from '$lib/components/Conversation.svelte';
-	import DropOverlay from '$lib/components/DropOverlay.svelte';
 	import RouteDecisionCard from '$lib/components/RouteDecisionCard.svelte';
 	import SourcesList from '$lib/components/SourcesList.svelte';
 	import SpanTimeline from '$lib/components/SpanTimeline.svelte';
-	import StatusBar from '$lib/components/StatusBar.svelte';
+	import { clearSpans, spans } from '$lib/spans.svelte';
 	import type { Turn } from '$lib/types';
 
 	let turns = $state<Turn[]>([]);
@@ -14,18 +13,20 @@
 	let sources = $state<Source[]>([]);
 	let cacheHit = $state(false);
 	let busy = $state(false);
-	let spans = $state<Span[]>([]);
-	let notice = $state<string | null>(null);
-
-	$effect(() => watchSpans((span) => (spans = [...spans.slice(-400), span])));
 
 	async function ask(message: string) {
 		busy = true;
 		decision = null;
 		sources = [];
 		cacheHit = false;
-		spans = [];
-		turns = [...turns, { role: 'user', text: message }, { role: 'assistant', text: '', pending: true }];
+		// The panel answers "what happened for THIS question", so the buffer starts
+		// empty. The full history stays available under Telemetry.
+		clearSpans();
+		turns = [
+			...turns,
+			{ role: 'user', text: message },
+			{ role: 'assistant', text: '', pending: true }
+		];
 		const reply = turns.length - 1;
 
 		try {
@@ -53,38 +54,17 @@
 			busy = false;
 		}
 	}
-
-	async function ingest(files: File[]) {
-		for (const file of files) {
-			notice = `Ingesting ${file.name}…`;
-			try {
-				const reports = await api.ingest(file);
-				const chunks = reports.reduce((total, report) => total + report.chunks, 0);
-				const routes = [...new Set(reports.flatMap((report) => report.routes))];
-				notice = `${file.name} — ${chunks} chunk${chunks === 1 ? '' : 's'} into ${routes.join(', ')}`;
-			} catch {
-				notice = `${file.name} could not be ingested.`;
-			}
-		}
-		setTimeout(() => (notice = null), 6000);
-	}
 </script>
-
-<StatusBar />
-<DropOverlay onfiles={ingest} />
 
 <main>
 	<section class="chat">
 		<Conversation {turns} />
-		{#if notice}
-			<p class="notice" role="status">{notice}</p>
-		{/if}
-		<footer><Composer {busy} onsubmit={ask} onattach={(file) => ingest([file])} /></footer>
+		<footer><Composer {busy} onsubmit={ask} /></footer>
 	</section>
 
 	<aside>
 		<RouteDecisionCard {decision} {cacheHit} />
-		<SpanTimeline {spans} />
+		<SpanTimeline spans={spans.items} />
 		<SourcesList {sources} />
 	</aside>
 </main>
@@ -92,8 +72,8 @@
 <style>
 	main {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) 22rem;
-		height: calc(100dvh - 3.25rem);
+		grid-template-columns: minmax(0, 1fr) 25rem;
+		height: calc(100dvh - var(--topbar-height));
 	}
 
 	.chat {
@@ -106,23 +86,6 @@
 		padding: var(--space-3) var(--space-5) var(--space-5);
 	}
 
-	.notice {
-		max-width: 44rem;
-		width: 100%;
-		margin: 0 auto;
-		padding: 0 var(--space-5) var(--space-2);
-		font-size: 0.75rem;
-		color: var(--text-secondary);
-		animation: rise var(--duration-enter) var(--ease-out) both;
-	}
-
-	@keyframes rise {
-		from {
-			opacity: 0;
-			transform: translateY(4px);
-		}
-	}
-
 	aside {
 		border-left: 1px solid var(--separator);
 		background: var(--surface);
@@ -130,8 +93,8 @@
 		overscroll-behavior: contain;
 	}
 
-	/* Below this the panel stops being a companion and starts being a competitor
-	   for the reading column, so it moves under the conversation instead. */
+	/* Below this the panel stops being a companion and starts competing with the
+	   reading column, so it moves under the conversation instead. */
 	@media (max-width: 900px) {
 		main {
 			grid-template-columns: minmax(0, 1fr);

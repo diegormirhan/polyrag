@@ -78,13 +78,13 @@
 	}
 
 	.plate strong {
-		font-size: 1.0625rem;
+		font-size: var(--text-lg);
 		font-weight: 590;
 		letter-spacing: -0.014em;
 	}
 
 	.plate span {
-		font-size: 0.8125rem;
+		font-size: var(--text-md);
 		color: var(--text-secondary);
 		line-height: 1.5;
 	}

@@ -62,7 +62,7 @@
 	h3 {
 		color: var(--text-tertiary);
 		text-transform: uppercase;
-		font-size: 0.6875rem;
+		font-size: var(--text-xs);
 		font-weight: 590;
 		letter-spacing: 0.06em;
 		margin-bottom: var(--space-3);
@@ -71,7 +71,7 @@
 	.idle,
 	.cached {
 		color: var(--text-secondary);
-		font-size: 0.8125rem;
+		font-size: var(--text-md);
 	}
 
 	.chosen {
@@ -82,13 +82,13 @@
 	}
 
 	.chosen strong {
-		font-size: 1.125rem;
+		font-size: var(--text-lg);
 		font-weight: 590;
 		letter-spacing: -0.016em;
 	}
 
 	.stage {
-		font-size: 0.6875rem;
+		font-size: var(--text-xs);
 		color: var(--text-secondary);
 		background: var(--surface-sunken);
 		border-radius: 999px;
@@ -112,10 +112,10 @@
 
 	li {
 		display: grid;
-		grid-template-columns: 4.75rem 1fr 2.75rem;
+		grid-template-columns: 6rem 1fr 3.25rem;
 		align-items: center;
 		gap: var(--space-2);
-		font-size: 0.75rem;
+		font-size: var(--text-sm);
 		color: var(--text-secondary);
 	}
 
@@ -124,7 +124,7 @@
 	}
 
 	.track {
-		height: 4px;
+		height: 5px;
 		border-radius: 2px;
 		background: var(--surface-sunken);
 		overflow: hidden;
@@ -146,7 +146,7 @@
 
 	.value {
 		text-align: right;
-		font-size: 0.6875rem;
+		font-size: var(--text-xs);
 	}
 
 	dl {
@@ -157,7 +157,7 @@
 	}
 
 	dt {
-		font-size: 0.6875rem;
+		font-size: var(--text-xs);
 		color: var(--text-tertiary);
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
@@ -165,12 +165,12 @@
 
 	dd {
 		margin: 0;
-		font-size: 0.8125rem;
+		font-size: var(--text-md);
 		font-weight: 510;
 	}
 
 	.explain {
-		font-size: 0.75rem;
+		font-size: var(--text-sm);
 		color: var(--text-tertiary);
 		line-height: 1.45;
 	}

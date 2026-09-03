@@ -47,7 +47,7 @@
 		gap: var(--space-2);
 		color: var(--text-tertiary);
 		text-transform: uppercase;
-		font-size: 0.6875rem;
+		font-size: var(--text-xs);
 		font-weight: 590;
 		letter-spacing: 0.06em;
 		margin-bottom: var(--space-3);
@@ -59,7 +59,7 @@
 
 	.idle {
 		color: var(--text-secondary);
-		font-size: 0.8125rem;
+		font-size: var(--text-md);
 	}
 
 	ul {
@@ -72,19 +72,19 @@
 
 	li {
 		display: grid;
-		grid-template-columns: 2.75rem 1fr;
+		grid-template-columns: 3.5rem 1fr;
 		gap: var(--space-2);
 		align-items: start;
 	}
 
 	.score {
-		font-size: 0.6875rem;
+		font-size: var(--text-xs);
 		color: var(--text-tertiary);
 		padding-top: 0.125rem;
 	}
 
 	p {
-		font-size: 0.75rem;
+		font-size: var(--text-sm);
 		line-height: 1.5;
 		color: var(--text-secondary);
 		/* Clamped rather than scrolled: the panel answers "what came back", and the
@@ -98,7 +98,7 @@
 
 	p.row {
 		font-family: var(--font-mono);
-		font-size: 0.6875rem;
+		font-size: var(--text-xs);
 		color: var(--text-primary);
 	}
 </style>

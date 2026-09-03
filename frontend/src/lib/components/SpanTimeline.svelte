@@ -73,7 +73,7 @@
 	h3 {
 		color: var(--text-tertiary);
 		text-transform: uppercase;
-		font-size: 0.6875rem;
+		font-size: var(--text-xs);
 		font-weight: 590;
 		letter-spacing: 0.06em;
 		margin-bottom: var(--space-3);
@@ -81,7 +81,7 @@
 
 	.idle {
 		color: var(--text-secondary);
-		font-size: 0.8125rem;
+		font-size: var(--text-md);
 	}
 
 	ol {
@@ -94,10 +94,10 @@
 
 	li {
 		display: grid;
-		grid-template-columns: 5.5rem 1fr 3.25rem;
+		grid-template-columns: 7.5rem 1fr 4rem;
 		align-items: center;
 		gap: var(--space-2);
-		font-size: 0.6875rem;
+		font-size: var(--text-xs);
 		color: var(--text-secondary);
 	}
 
@@ -108,7 +108,7 @@
 	}
 
 	.track {
-		height: 3px;
+		height: 4px;
 		border-radius: 2px;
 		background: var(--surface-sunken);
 	}

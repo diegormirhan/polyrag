@@ -1,14 +1,9 @@
 <script lang="ts">
-	let {
-		busy = false,
-		onsubmit,
-		onattach
-	}: { busy?: boolean; onsubmit: (message: string) => void; onattach: (file: File) => void } =
+	let { busy = false, onsubmit }: { busy?: boolean; onsubmit: (message: string) => void } =
 		$props();
 
 	let value = $state('');
 	let field: HTMLTextAreaElement;
-	let picker: HTMLInputElement;
 
 	function send() {
 		const message = value.trim();
@@ -32,34 +27,9 @@
 		field.style.height = `${Math.min(field.scrollHeight, 200)}px`;
 	}
 
-	function pick(event: Event) {
-		const file = (event.target as HTMLInputElement).files?.[0];
-		if (file) onattach(file);
-		picker.value = '';
-	}
 </script>
 
 <div class="composer">
-	<button class="attach" onclick={() => picker.click()} title="Add a file to the corpus">
-		<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-			<path
-				d="M8 3.5v9M3.5 8h9"
-				stroke="currentColor"
-				stroke-width="1.5"
-				stroke-linecap="round"
-				fill="none"
-			/>
-		</svg>
-		<span class="sr">Add a file</span>
-	</button>
-	<input
-		bind:this={picker}
-		type="file"
-		hidden
-		onchange={pick}
-		accept=".png,.jpg,.jpeg,.webp,.bmp,.txt,.md,.csv,.xlsx,.pdf,.docx,.pptx"
-	/>
-
 	<textarea
 		bind:this={field}
 		bind:value
@@ -122,8 +92,8 @@
 
 	button {
 		flex-shrink: 0;
-		width: 2rem;
-		height: 2rem;
+		width: 2.25rem;
+		height: 2.25rem;
 		display: grid;
 		place-items: center;
 		border-radius: 50%;
@@ -139,17 +109,9 @@
 		transform: scale(0.92);
 	}
 
-	.attach {
-		color: var(--text-secondary);
-	}
-
-	.attach:hover {
-		background: var(--surface-sunken);
-	}
-
 	.send {
 		background: var(--accent);
-		color: #fff;
+		color: var(--on-accent);
 	}
 
 	.send:disabled {
@@ -158,12 +120,4 @@
 		cursor: default;
 	}
 
-	.sr {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		overflow: hidden;
-		clip-path: inset(50%);
-		white-space: nowrap;
-	}
 </style>

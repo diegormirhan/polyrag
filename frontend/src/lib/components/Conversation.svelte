@@ -69,14 +69,14 @@
 	}
 
 	.empty h2 {
-		font-size: 1.375rem;
+		font-size: var(--text-xl);
 		letter-spacing: -0.019em;
 		margin-bottom: var(--space-3);
 	}
 
 	.empty p {
 		color: var(--text-secondary);
-		font-size: 0.875rem;
+		font-size: var(--text-base);
 		line-height: 1.6;
 	}
 
@@ -98,7 +98,7 @@
 
 	.user p {
 		background: var(--accent);
-		color: #fff;
+		color: var(--on-accent);
 		padding: var(--space-3) var(--space-4);
 		border-radius: var(--radius-lg);
 		border-bottom-right-radius: var(--radius-sm);
@@ -109,7 +109,7 @@
 
 	.badge {
 		display: inline-block;
-		font-size: 0.6875rem;
+		font-size: var(--text-xs);
 		color: var(--accent);
 		background: var(--accent-soft);
 		border-radius: 999px;
@@ -132,7 +132,7 @@
 	.prose :global(table) {
 		border-collapse: collapse;
 		width: 100%;
-		font-size: 0.8125rem;
+		font-size: var(--text-md);
 		margin: var(--space-3) 0;
 	}
 
@@ -146,7 +146,7 @@
 	.prose :global(th) {
 		color: var(--text-tertiary);
 		font-weight: 510;
-		font-size: 0.6875rem;
+		font-size: var(--text-xs);
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
 	}

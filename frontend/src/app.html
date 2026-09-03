@@ -8,6 +8,16 @@
 		<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
 		<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
 		<title>PolyRAG</title>
+		<script>
+			// Runs before first paint. Reading the stored choice after hydration would
+			// show one frame of the wrong theme on every single load.
+			try {
+				const choice = localStorage.getItem('polyrag-theme');
+				if (choice === 'light' || choice === 'dark') {
+					document.documentElement.dataset.theme = choice;
+				}
+			} catch {}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
