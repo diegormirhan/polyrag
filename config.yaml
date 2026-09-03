@@ -11,7 +11,8 @@ llama:
     ctx_size: 8192   # medido: 16384 custava 1.17GB a mais de KV cache. O maior prompt
                      # de hoje (OpenIE) e ~1100 tokens, entao sobra 7x de folga.
     n_gpu_layers: -1
-    temperature: 0.2
+    temperature: 0.0   # medido: com 0.2, 2 de 6 respostas multi-hop saiam ERRADAS
+                       # (4/6 certas). Com 0.0, 6/6. A amostragem nao era de graca.
   ocr:            # GLM-OCR ~830M params (~2.3GB VRAM) — candidato a "sob demanda"
     model_path: models/GLM-OCR-Q8_0.gguf
     mmproj_path: models/mmproj-GLM-OCR-Q8_0.gguf
@@ -195,10 +196,22 @@ orchestrator:
     Question: {question}
 
     Rules:
+    - Answer directly, in at most 3 sentences. No preamble, no numbered reasoning
+      steps, no restating the question, no "based on the context" framing.
     - Use only facts present in the context. Never invent data.
     - If the context does not answer the question, say so plainly.
     - Reply in the same language as the question.
     - Keep any table in Markdown format.
+
+    WRONG:
+      **Raciocinio baseado no contexto:**
+      1. O valor da compra e de 80.000 reais.
+      2. A Politica PC-04 exige aprovacao acima de 50.000 reais.
+      3. Portanto, a compra requer aprovacao da Diretoria Financeira.
+
+    RIGHT:
+      A compra requer aprovacao previa da Diretoria Financeira, porque o Contrato
+      Marco 2026 do Fornecedor Vega segue a Politica PC-04.
 
     Answer:
 
