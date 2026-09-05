@@ -32,8 +32,10 @@ async def main() -> None:
         if data.get("relation") != "mentioned_in":
             print(f"  ({u}) --{data['relation']}--> ({v})")
     entities = [n for n, d in graph.nodes(data=True) if d.get("kind") == "entity"]
-    print(f"\ngrafo: {graph.number_of_nodes()} nos ({len(entities)} entidades), "
-          f"{graph.number_of_edges()} arestas")
+    print(
+        f"\ngrafo: {graph.number_of_nodes()} nos ({len(entities)} entidades), "
+        f"{graph.number_of_edges()} arestas"
+    )
 
     print("\n===== BUSCA (PPR multi-hop) =====")
     print(f"pergunta: {QUESTION}")

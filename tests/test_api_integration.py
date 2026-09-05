@@ -27,7 +27,7 @@ async def with_live_spans(coro):
         while True:
             try:
                 spans.append(json.loads(await asyncio.wait_for(socket.recv(), timeout=2.0)))
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 if task.done():
                     break
         return await task, spans
@@ -41,7 +41,7 @@ async def ask(client: httpx.AsyncClient) -> dict:
 
 def report(label: str, body: dict) -> None:
     stage = f"{body['route']}/{body['decision_stage']}" if body["route"] else "-"
-    print(f"  {label:<22} cache_hit={str(body['cache_hit']):<5} rota={stage:<20} trace={body['trace_id'][:12]}")
+    print(f"  {label:<22} cache_hit={body['cache_hit']!s:<5} rota={stage:<20} trace={body['trace_id'][:12]}")
 
 
 async def main() -> None:

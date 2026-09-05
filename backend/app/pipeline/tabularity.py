@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from app.ingest.chunking import TABLE_BLOCK
+
 
 def tabularity_score(text: str) -> float:
     stripped = text.strip()

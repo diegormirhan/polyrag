@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+from opentelemetry import trace
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, embed
 from app.rags.base import RAGBase, content_id
-from opentelemetry import trace
 
 _tracer = trace.get_tracer("polyrag.rag")
 
@@ -20,7 +20,7 @@ class VectorialRAG(RAGBase):
         self._settings = settings
 
     @classmethod
-    async def create(cls, clients: LlamaClients, settings: Settings | None = None) -> "VectorialRAG":
+    async def create(cls, clients: LlamaClients, settings: Settings | None = None) -> VectorialRAG:
         settings = settings or load_config()
         cfg = settings.qdrant
         client = AsyncQdrantClient(host=cfg.host, port=cfg.port)

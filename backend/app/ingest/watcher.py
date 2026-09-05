@@ -1,19 +1,21 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from enum import Enum
-from pathlib import Path
-from typing import AsyncIterator
+
 import asyncio
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
+from enum import StrEnum
+from pathlib import Path
 
 from app.core.config import Settings, load_config
 
+
 # A closed set of allowed "kinds" of file. Using an Enum instead of raw strings
 # means typos get caught by the type checker instead of silently misrouting a file.
-class FileKind(str, Enum):
-    VISION = "vision"      # image -> needs OCR before it becomes text
-    TEXT = "text"           # already plain text, read as-is
-    TABLE = "table"          # csv/xlsx -> read as a pandas DataFrame
-    DOCUMENT = "document"     # pdf/docx/pptx -> needs a format-specific extractor
+class FileKind(StrEnum):
+    VISION = "vision"  # image -> needs OCR before it becomes text
+    TEXT = "text"  # already plain text, read as-is
+    TABLE = "table"  # csv/xlsx -> read as a pandas DataFrame
+    DOCUMENT = "document"  # pdf/docx/pptx -> needs a format-specific extractor
 
 
 # Small immutable pair: which file, and what kind it is. frozen=True stops anything
@@ -52,11 +54,7 @@ class Watcher:
         processed = Path(self._settings.paths.processed)
         processed_names = {p.name for p in processed.glob("*")} if processed.exists() else set()
 
-        return [
-            p
-            for p in data_drop.glob("*")
-            if p.is_file() and p.name not in processed_names
-        ]
+        return [p for p in data_drop.glob("*") if p.is_file() and p.name not in processed_names]
 
     async def poll_once(self) -> list[IngestFile]:
         # One check-cycle, no waiting/looping inside — kept separate from watch()

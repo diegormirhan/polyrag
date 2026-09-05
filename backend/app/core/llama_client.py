@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from openai import AsyncOpenAI
 from opentelemetry import trace
@@ -48,10 +48,12 @@ async def chat(
         )
         content = response.choices[0].message.content or ""
         if response.usage is not None:
-            span.set_attributes({
-                "llm.prompt_tokens": response.usage.prompt_tokens,
-                "llm.completion_tokens": response.usage.completion_tokens,
-            })
+            span.set_attributes(
+                {
+                    "llm.prompt_tokens": response.usage.prompt_tokens,
+                    "llm.completion_tokens": response.usage.completion_tokens,
+                }
+            )
         return content
 
 

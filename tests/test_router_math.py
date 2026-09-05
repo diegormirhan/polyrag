@@ -32,8 +32,8 @@ def test_best_route_scores_picks_max_anchor_not_average():
 def test_best_route_scores_ranks_routes_correctly():
     vector = [1.0, 0.0]
     anchors = {
-        "route_a": [[1.0, 0.0]],        # identical -> cosine 1.0
-        "route_b": [[0.0, 1.0]],        # orthogonal -> cosine 0.0
+        "route_a": [[1.0, 0.0]],  # identical -> cosine 1.0
+        "route_b": [[0.0, 1.0]],  # orthogonal -> cosine 0.0
         "route_c": [[0.7071, 0.7071]],  # 45 degrees -> cosine ~0.7071
     }
     scores = _best_route_scores(vector, anchors)

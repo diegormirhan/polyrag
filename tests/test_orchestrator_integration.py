@@ -63,7 +63,8 @@ CASES = [
         question="se a Fabrica Beta atrasar, o que e afetado?",
         route="graph",
         must_contain=["Motor X", "Sedan Z"],
-        why="2 hops — no chunk names Fabrica Beta and Sedan Z together, so vector search alone cannot reach it",
+        why="2 hops — no chunk names Fabrica Beta and Sedan Z together, "
+        "so vector search alone cannot reach it",
     ),
 ]
 

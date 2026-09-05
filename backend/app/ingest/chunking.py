@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 import re
+
+from opentelemetry import trace
 
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, embed
 from app.core.vectors import dot, normalize
-from opentelemetry import trace
 
 _tracer = trace.get_tracer("polyrag.ingest")
 
@@ -13,10 +15,12 @@ _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 _PARAGRAPH_SPLIT = re.compile(r"\n\s*\n")
 _HEADING = re.compile(r"^(#{1,6}) +(.+)$", re.MULTILINE)
 
+
 def _centroid(vectors: list[list[float]]) -> list[float]:
     dim = len(vectors[0])
     mean = [sum(v[i] for v in vectors) / len(vectors) for i in range(dim)]
     return normalize(mean)
+
 
 async def semantic_chunk_text(
     text: str, clients: LlamaClients, threshold: float, min_chunk_chars: int
@@ -31,7 +35,7 @@ async def semantic_chunk_text(
     groups: list[list[str]] = [[sentences[0]]]
     group_vectors: list[list[list[float]]] = [[vectors[0]]]
 
-    for sentence, vector in zip(sentences[1:], vectors[1:]):
+    for sentence, vector in zip(sentences[1:], vectors[1:], strict=True):
         current_len = sum(len(s) for s in groups[-1])
         # Compare the next sentence against the AVERAGE of every vector already
         # accumulated in the current group — not just the single previous sentence.
@@ -54,6 +58,7 @@ async def semantic_chunk_text(
             group_vectors.append([vector])
 
     return [" ".join(group) for group in groups]
+
 
 def _paragraphs(text: str, min_chars: int) -> list[str]:
     """Blank-line separated blocks, with runts merged into the next one.
@@ -96,7 +101,7 @@ def _track_headings(block: str, trail: dict[int, str]) -> None:
 
 
 def _breadcrumb(trail: dict[int, str]) -> str:
-    return " › ".join(trail[level] for level in sorted(trail))
+    return " › ".join(trail[level] for level in sorted(trail))  # noqa: RUF001
 
 
 def _split_table_blocks(text: str) -> list[tuple[str, bool]]:
@@ -105,12 +110,13 @@ def _split_table_blocks(text: str) -> list[tuple[str, bool]]:
     pos = 0
     for match in TABLE_BLOCK.finditer(text):
         if match.start() > pos:
-            segments.append((text[pos:match.start()], False))
+            segments.append((text[pos : match.start()], False))
         segments.append((match.group(), True))
         pos = match.end()
     if pos < len(text):
         segments.append((text[pos:], False))
     return segments
+
 
 async def chunks(text: str, clients: LlamaClients, settings: Settings | None = None) -> list[str]:
     settings = settings or load_config()
@@ -146,4 +152,3 @@ async def _chunk(text: str, clients: LlamaClients, settings: Settings) -> list[s
             ):
                 pieces.append(piece if not context or context in piece else f"{context}\n{piece}")
     return pieces
-

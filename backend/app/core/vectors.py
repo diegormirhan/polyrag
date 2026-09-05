@@ -15,4 +15,6 @@ def dot(a: list[float], b: list[float]) -> float:
     # Dot product — sum of (position i of vector a) * (position i of vector b).
     # When both vectors are already normalized (length 1), this IS the cosine
     # similarity directly — no division by norms needed here anymore.
-    return sum(x * y for x, y in zip(a, b))
+    # strict: two vectors of different dimensions is a bug, and zip would
+    # silently return the dot product of the shorter prefix instead.
+    return sum(x * y for x, y in zip(a, b, strict=True))

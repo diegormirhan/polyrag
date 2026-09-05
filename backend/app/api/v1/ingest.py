@@ -43,13 +43,9 @@ async def ingest(
 
     reports = await ingestor.ingest_pending()
     jobs.extend(reports)
-    return [
-        IngestReportOut(file=r.path.name, chunks=len(r.routes), routes=r.routes) for r in reports
-    ]
+    return [IngestReportOut(file=r.path.name, chunks=len(r.routes), routes=r.routes) for r in reports]
 
 
 @router.get("/ingest/jobs", response_model=list[IngestReportOut])
 async def jobs(jobs: deque = Depends(get_jobs)) -> list[IngestReportOut]:
-    return [
-        IngestReportOut(file=r.path.name, chunks=len(r.routes), routes=r.routes) for r in jobs
-    ]
+    return [IngestReportOut(file=r.path.name, chunks=len(r.routes), routes=r.routes) for r in jobs]

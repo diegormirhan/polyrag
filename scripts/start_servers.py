@@ -58,11 +58,16 @@ def _llama(settings: Settings, name: str, cfg, extra: list[str]) -> Service:
         probe=f"http://{cfg.host}:{cfg.port}/health",
         command=[
             str(ROOT / settings.llama.bin_path),
-            "-m", str(cfg.model_path),
-            "--host", cfg.host,
-            "--port", str(cfg.port),
-            "-c", str(cfg.ctx_size),
-            "-ngl", str(cfg.n_gpu_layers),
+            "-m",
+            str(cfg.model_path),
+            "--host",
+            cfg.host,
+            "--port",
+            str(cfg.port),
+            "-c",
+            str(cfg.ctx_size),
+            "-ngl",
+            str(cfg.n_gpu_layers),
             *extra,
         ],
     )
@@ -75,8 +80,12 @@ def _services(settings: Settings) -> list[Service]:
         # flag changes VRAM by only 0.07GB), so with the default 4 slots a ctx_size
         # of 8192 would leave 2048 tokens per request, under what the answer path needs.
         _llama(settings, "llm (Qwen3.5-4B)", llama.llm, ["--parallel", "1"]),
-        _llama(settings, "ocr (GLM-OCR)", llama.ocr,
-               ["--mmproj", str(llama.ocr.mmproj_path), *_sleep_flag(llama.ocr)]),
+        _llama(
+            settings,
+            "ocr (GLM-OCR)",
+            llama.ocr,
+            ["--mmproj", str(llama.ocr.mmproj_path), *_sleep_flag(llama.ocr)],
+        ),
         _llama(settings, "embeddings (BGE-M3)", llama.embeddings, ["--embedding"]),
         # The judge shares the llm's port, so it is the llm — nothing extra to start.
         # A judge configured on its own port would get its own server again.
@@ -123,7 +132,9 @@ def main() -> None:
 
     if pending:
         print()
-        if not all([_wait_until_up(service) for service in pending]):
+        # A list, not a generator: all() short-circuits, and a generator would
+        # stop waiting for the remaining services after the first failure.
+        if not all([_wait_until_up(service) for service in pending]):  # noqa: C419
             raise SystemExit(1)
     print("\ntudo respondendo")
 

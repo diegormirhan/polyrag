@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import base64
+import re
 from io import StringIO
 from pathlib import Path
-import re
+
 import pandas as pd
+from opentelemetry import trace
+
 from app.core.config import load_config
 from app.core.llama_client import LlamaClients, chat
-from opentelemetry import trace
 
 _tracer = trace.get_tracer("polyrag.ingest")
 
 _MIME_OVERRIDES = {"jpg": "jpeg"}
 _TABLE_PATTERN = re.compile(r"<table.*?</table>", re.DOTALL | re.IGNORECASE)
+
 
 async def extract_text(path: Path, clients: LlamaClients) -> str:
     settings = load_config()
@@ -25,8 +28,8 @@ async def extract_text(path: Path, clients: LlamaClients) -> str:
             "role": "user",
             "content": [
                 {"type": "text", "text": settings.ingest.ocr_prompt},
-                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{image_b64}"}}
-            ]
+                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{image_b64}"}},
+            ],
         }
     ]
     # temperature=0: OCR is extraction, not generation — sampling only risks
@@ -38,8 +41,10 @@ async def extract_text(path: Path, clients: LlamaClients) -> str:
         span.set_attribute("ocr.chars", len(text))
         return text
 
+
 def _html_tables_to_markdown(text: str) -> str:
     def replace(match: re.Match) -> str:
         table = pd.read_html(StringIO(match.group(0)))[0]
         return table.to_markdown(index=False)
+
     return _TABLE_PATTERN.sub(replace, text)

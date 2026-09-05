@@ -19,8 +19,13 @@ QUESTIONS = [
 
 # Attributes worth putting on the timeline row itself; everything else is noise there.
 HIGHLIGHTS = (
-    "cache.hit", "router.route", "router.decision_stage", "router.margin",
-    "rag.results", "embed.count", "llm.completion_tokens",
+    "cache.hit",
+    "router.route",
+    "router.decision_stage",
+    "router.margin",
+    "rag.results",
+    "embed.count",
+    "llm.completion_tokens",
 )
 
 

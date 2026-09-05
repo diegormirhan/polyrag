@@ -50,4 +50,4 @@ async def corpus(
 
     names = list(rags)
     stats = await asyncio.gather(*(rags[name].stats() for name in names))
-    return CorpusResponse(files=files, stores=dict(zip(names, stats)))
+    return CorpusResponse(files=files, stores=dict(zip(names, stats, strict=True)))

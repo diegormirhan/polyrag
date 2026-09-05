@@ -75,7 +75,7 @@ class Ingestor:
         self._watcher = Watcher(settings)
 
     @classmethod
-    async def create(cls, clients: LlamaClients, settings: Settings | None = None) -> "Ingestor":
+    async def create(cls, clients: LlamaClients, settings: Settings | None = None) -> Ingestor:
         settings = settings or load_config()
         router = await Router.create(clients, settings)
         return cls(clients, router, await build_rags(clients, settings), settings)
@@ -86,10 +86,12 @@ class Ingestor:
 
     async def ingest_file(self, ingest_file: IngestFile) -> IngestReport:
         with _tracer.start_as_current_span("pipeline.ingest") as span:
-            span.set_attributes({
-                "ingest.file": ingest_file.path.name,
-                "ingest.kind": ingest_file.kind.value,
-            })
+            span.set_attributes(
+                {
+                    "ingest.file": ingest_file.path.name,
+                    "ingest.kind": ingest_file.kind.value,
+                }
+            )
             if ingest_file.kind == FileKind.TABLE:
                 # A spreadsheet is tabular by definition, so routing it would be asking
                 # a question whose answer is already known. Only chunks get routed.
@@ -120,15 +122,17 @@ class Ingestor:
                 # router.route and ingest.stored_in are separate attributes on purpose:
                 # when they disagree, a chunk was sent to `relational` and turned out to
                 # hold no table. That divergence is the interesting signal, not an error.
-                span.set_attributes({
-                    "chunk.index": index,
-                    "chunk.chars": len(chunk),
-                    "router.route": decision.route,
-                    "router.decision_stage": decision.decision_stage,
-                    "router.margin": decision.margin,
-                    "ingest.stored_in": stored_in,
-                    **{f"router.score.{r}": s for r, s in decision.scores.items()},
-                })
+                span.set_attributes(
+                    {
+                        "chunk.index": index,
+                        "chunk.chars": len(chunk),
+                        "router.route": decision.route,
+                        "router.decision_stage": decision.decision_stage,
+                        "router.margin": decision.margin,
+                        "ingest.stored_in": stored_in,
+                        **{f"router.score.{r}": s for r, s in decision.scores.items()},
+                    }
+                )
             routes.append(stored_in)
         return routes
 

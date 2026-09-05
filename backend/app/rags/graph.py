@@ -5,12 +5,12 @@ import re
 from pathlib import Path
 
 import networkx as nx
+from opentelemetry import trace
 
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, chat, embed
 from app.core.vectors import dot, normalize
 from app.rags.base import RAGBase, content_id
-from opentelemetry import trace
 
 _tracer = trace.get_tracer("polyrag.rag")
 
@@ -66,7 +66,9 @@ def _is_entity_name(name: str, max_words: int) -> bool:
 
 def parse_entities(raw: str) -> list[str]:
     """Parses the LLM's JSON array of entity names (NER on the user's question)."""
-    return [normalize_entity(item) for item in _load_json_array(raw) if isinstance(item, str) and item.strip()]
+    return [
+        normalize_entity(item) for item in _load_json_array(raw) if isinstance(item, str) and item.strip()
+    ]
 
 
 class GraphRAG(RAGBase):
@@ -80,7 +82,7 @@ class GraphRAG(RAGBase):
         self._store_path.parent.mkdir(parents=True, exist_ok=True)
 
     @classmethod
-    def load(cls, clients: LlamaClients, settings: Settings | None = None) -> "GraphRAG":
+    def load(cls, clients: LlamaClients, settings: Settings | None = None) -> GraphRAG:
         settings = settings or load_config()
         path = Path(settings.paths.graph_store)
         if path.exists():
@@ -148,22 +150,24 @@ class GraphRAG(RAGBase):
             # graph.entities is on the span on purpose: this step embeds EVERY entity
             # in the graph on every query, so the attribute is the early warning for
             # a cost that grows with the corpus.
-            span.set_attributes({
-                "graph.entities": len(graph_entities),
-                "graph.question_entities": len(question_entities),
-            })
+            span.set_attributes(
+                {
+                    "graph.entities": len(graph_entities),
+                    "graph.question_entities": len(question_entities),
+                }
+            )
             if not question_entities or not graph_entities:
                 return []
 
             names = list(question_entities) + graph_entities
             vectors = [normalize(v) for v in await embed(self._clients.embeddings, names)]
             question_vectors = vectors[: len(question_entities)]
-            graph_vectors = vectors[len(question_entities):]
+            graph_vectors = vectors[len(question_entities) :]
 
             threshold = self._settings.rags.graph.entity_match_threshold
             seeds = set()
             for q_vector in question_vectors:
-                for name, g_vector in zip(graph_entities, graph_vectors):
+                for name, g_vector in zip(graph_entities, graph_vectors, strict=True):
                     if dot(q_vector, g_vector) >= threshold:
                         seeds.add(name)
             span.set_attribute("graph.seeds_matched", len(seeds))
@@ -177,15 +181,17 @@ class GraphRAG(RAGBase):
         # Personalized PageRank: the random walk always teleports back to the
         # question's entities, so scores mean "relevant to THIS question".
         with _tracer.start_as_current_span("rag.graph.pagerank") as span:
-            span.set_attributes({
-                "graph.nodes": self._graph.number_of_nodes(),
-                "graph.edges": self._graph.number_of_edges(),
-                "graph.seeds": len(seeds),
-            })
+            span.set_attributes(
+                {
+                    "graph.nodes": self._graph.number_of_nodes(),
+                    "graph.edges": self._graph.number_of_edges(),
+                    "graph.seeds": len(seeds),
+                }
+            )
             scores = nx.pagerank(
                 self._graph,
                 alpha=self._settings.rags.graph.pagerank_damping,
-                personalization={seed: 1.0 for seed in seeds},
+                personalization=dict.fromkeys(seeds, 1.0),
             )
         chunks = [
             {"text": self._graph.nodes[node]["text"], "score": score, "seeds": seeds}
@@ -193,5 +199,3 @@ class GraphRAG(RAGBase):
             if self._graph.nodes[node].get("kind") == "chunk"
         ]
         return sorted(chunks, key=lambda c: c["score"], reverse=True)[:top_k]
-
-    

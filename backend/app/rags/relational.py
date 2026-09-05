@@ -5,11 +5,11 @@ import sqlite3
 from pathlib import Path
 
 import pandas as pd
+from opentelemetry import trace
 
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, chat
 from app.rags.base import RAGBase
-from opentelemetry import trace
 
 _tracer = trace.get_tracer("polyrag.rag")
 

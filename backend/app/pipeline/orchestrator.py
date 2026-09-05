@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Any, AsyncIterator
+from typing import Any
 
 import pandas as pd
 from opentelemetry import trace
-_tracer = trace.get_tracer("polyrag.pipeline")
 
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, chat_stream, embed
@@ -16,6 +16,7 @@ from app.rags.base import RAGBase
 from app.rags.factory import build_rags
 
 _tracer = trace.get_tracer("polyrag.pipeline")
+
 
 @dataclass(frozen=True)
 class ChatResult:
@@ -50,7 +51,7 @@ class Orchestrator:
         self._settings = settings
 
     @classmethod
-    async def create(cls, clients: LlamaClients, settings: Settings | None = None) -> "Orchestrator":
+    async def create(cls, clients: LlamaClients, settings: Settings | None = None) -> Orchestrator:
         settings = settings or load_config()
         rags = await build_rags(clients, settings)
         # A disabled cache is simply no cache: one source of truth, instead of an
@@ -107,16 +108,18 @@ class Orchestrator:
             # noise, and keeping route() self-contained is worth more than the microopt.
             with _tracer.start_as_current_span("pipeline.router") as span:
                 decision = await self._router.route(question)
-                span.set_attributes({
-                    "router.route": decision.route,
-                    "router.decision_stage": decision.decision_stage,
-                    "router.score_top1": decision.score_top1,
-                    "router.score_top2": decision.score_top2,
-                    "router.margin": decision.margin,
-                    # Flattened one key per route: OTel attributes take primitives,
-                    # never a dict.
-                    **{f"router.score.{r}": s for r, s in decision.scores.items()},
-                })
+                span.set_attributes(
+                    {
+                        "router.route": decision.route,
+                        "router.decision_stage": decision.decision_stage,
+                        "router.score_top1": decision.score_top1,
+                        "router.score_top2": decision.score_top2,
+                        "router.margin": decision.margin,
+                        # Flattened one key per route: OTel attributes take primitives,
+                        # never a dict.
+                        **{f"router.score.{r}": s for r, s in decision.scores.items()},
+                    }
+                )
             # Emitted before retrieval so the panel can draw the decision while the
             # RAG is still working — the wait becomes the product.
             yield {"type": "decision", "decision": decision}

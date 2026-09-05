@@ -11,9 +11,11 @@ from pydantic import BaseModel
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config.yaml"
 
+
 class ServerConfig(BaseModel):
     host: str
     port: int
+
 
 # Cada llama-server roda um modelo diferente (LLM, OCR, embeddings), então cada um
 # tem seu próprio bloco de config com host/porta/ctx_size independentes.
@@ -28,14 +30,17 @@ class LlmModelConfig(BaseModel):
     # ocioso e recarregar na próxima requisição — medido: o GLM-OCR devolve 2.08GB.
     sleep_idle_seconds: int = -1
 
+
 class OcrModelConfig(BaseModel):
     model_path: Path
-    mmproj_path: Path  # projeção multimodal (imagem -> espaço do modelo) exigida por modelos de visão no llama.cpp
+    # projeção multimodal (imagem -> espaço do modelo), exigida por modelos de visão no llama.cpp
+    mmproj_path: Path
     host: str
     port: int
     ctx_size: int
     n_gpu_layers: int
     sleep_idle_seconds: int = -1  # ver LlmModelConfig
+
 
 class EmbeddingsModelsConfig(BaseModel):
     model_path: Path
@@ -45,12 +50,14 @@ class EmbeddingsModelsConfig(BaseModel):
     n_gpu_layers: int
     dimensions: int  # tamanho do vetor de saída (1024 pro BGE-M3) — usado pelo Qdrant e pelo FAISS
 
+
 class LlamaConfig(BaseModel):
     bin_path: Path  # caminho do executável llama-server.exe, compartilhado pelas 4 instâncias
     llm: LlmModelConfig
     ocr: OcrModelConfig
     embeddings: EmbeddingsModelsConfig
     judge: LlmModelConfig  # Prometheus 2 — juiz dedicado do roteador (mesmo shape do llm, sem mmproj)
+
 
 class QdrantConfig(BaseModel):
     bin_path: Path
@@ -61,12 +68,14 @@ class QdrantConfig(BaseModel):
     distance: str
     vector_size: int
 
+
 class PathsConfig(BaseModel):
-    data_drop: str      # hot folder onde o usuário larga arquivos
-    processed: str       # arquivos já ingeridos são movidos pra cá
+    data_drop: str  # hot folder onde o usuário larga arquivos
+    processed: str  # arquivos já ingeridos são movidos pra cá
     ingest_manifest: str  # registro persistente de onde os chunks de cada arquivo pararam
-    sqlite_db: str        # RAG 1
-    graph_store: str      # RAG 3 (grafo persistido em JSON)
+    sqlite_db: str  # RAG 1
+    graph_store: str  # RAG 3 (grafo persistido em JSON)
+
 
 # Prompts de cada RAG ficam aqui (mesma regra do ocr_prompt/llm_judge_prompt:
 # nada de prompt hardcoded no código). RAG 2 e RAG 3 entram nesta seção conforme
@@ -74,16 +83,19 @@ class PathsConfig(BaseModel):
 class RelationalRagConfig(BaseModel):
     text_to_sql_prompt: str  # template com {schema} e {question}
 
+
 class GraphRagConfig(BaseModel):
     entity_match_threshold: float  # cosseno mínimo pra casar entidade da pergunta com nó do grafo
-    pagerank_damping: float        # fator d do PageRank (ver seção 4.6 do CLAUDE.md)
-    max_entity_words: int          # teto determinístico pro tamanho do nome de uma entidade
-    openie_prompt: str             # ingestão: {text} -> triplas em JSON (texto declarativo)
-    ner_prompt: str                # busca: {text} -> lista de entidades (pergunta não declara fato)
+    pagerank_damping: float  # fator d do PageRank (ver seção 4.6 do CLAUDE.md)
+    max_entity_words: int  # teto determinístico pro tamanho do nome de uma entidade
+    openie_prompt: str  # ingestão: {text} -> triplas em JSON (texto declarativo)
+    ner_prompt: str  # busca: {text} -> lista de entidades (pergunta não declara fato)
+
 
 class RagsConfig(BaseModel):
     relational: RelationalRagConfig
     graph: GraphRagConfig
+
 
 # Cada rota do roteador semântico carrega uma descrição (usada pelo LLM-juiz na zona
 # cinzenta) e uma lista de frases-âncora (usadas para gerar os vetores de referência
@@ -92,38 +104,46 @@ class RouteConfig(BaseModel):
     description: str
     utterances: list[str]
 
+
 class RouterConfig(BaseModel):
-    tau_heuristic: float  # score mínimo do Estágio 1 (tabularity_score) pra decidir "relational" sem embedding
-    tau_high: float       # score mínimo do top1 pra aceitar a rota direto
-    tau_low: float          # abaixo disso, nem tenta: cai no fallback vectorial
-    delta_margin: float      # margem mínima (top1 - top2) pra considerar a decisão "confiante"
-    llm_judge_enabled: bool   # permite desligar o juiz LLM e forçar decisão só por threshold
+    # score mínimo do Estágio 1 (tabularity_score) pra decidir "relational" sem embedding
+    tau_heuristic: float
+    tau_high: float  # score mínimo do top1 pra aceitar a rota direto
+    tau_low: float  # abaixo disso, nem tenta: cai no fallback vectorial
+    delta_margin: float  # margem mínima (top1 - top2) pra considerar a decisão "confiante"
+    llm_judge_enabled: bool  # permite desligar o juiz LLM e forçar decisão só por threshold
     llm_judge_prompt: str
     routes: dict[str, RouteConfig]  # chave = nome da rota ("relational", "vectorial", "graph")
+
 
 class CacheConfig(BaseModel):
     enabled: bool
     similarity_threshold: float  # cosseno mínimo pra considerar cache hit (CAG)
     max_entries: int
 
+
 class OrchestratorConfig(BaseModel):
-    top_k: int          # quantos resultados cada RAG devolve pro contexto do LLM
+    top_k: int  # quantos resultados cada RAG devolve pro contexto do LLM
     answer_prompt: str  # template com {context} e {question}
+
 
 class IngestConfig(BaseModel):
     watch_interval_s: float
     semantic_threshold: float  # cosseno mínimo entre frases consecutivas pra continuar no mesmo chunk
-    min_chunk_chars: int  # piso de tamanho: abaixo disso, força continuar no mesmo grupo mesmo com cosseno baixo
+    # piso de tamanho: abaixo disso, força continuar no mesmo grupo mesmo com cosseno baixo
+    min_chunk_chars: int
     ocr_prompt: str
-    vision_extensions: list[str]   # vão pro GLM-OCR antes de qualquer outra coisa
-    text_extensions: list[str]     # lidos como string crua
-    table_extensions: list[str]    # lidos como DataFrame (pandas)
+    vision_extensions: list[str]  # vão pro GLM-OCR antes de qualquer outra coisa
+    text_extensions: list[str]  # lidos como string crua
+    table_extensions: list[str]  # lidos como DataFrame (pandas)
     document_extensions: list[str]
+
 
 class TelemetryConfig(BaseModel):
     enabled: bool
     service_name: str
     ring_buffer_size: int  # quantos spans recentes ficam guardados em RAM pro endpoint /telemetry/traces
+
 
 # Modelo raiz: espelha 1:1 as chaves de topo do config.yaml. Se o YAML tiver um campo
 # faltando ou de tipo errado, o Pydantic explode aqui na inicialização — não em algum
@@ -139,6 +159,7 @@ class Settings(BaseModel):
     orchestrator: OrchestratorConfig
     ingest: IngestConfig
     telemetry: TelemetryConfig
+
 
 # lru_cache com um único argumento de default fixo funciona como singleton: a primeira
 # chamada lê e valida o YAML; todas as chamadas seguintes (de qualquer módulo do backend)

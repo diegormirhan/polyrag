@@ -1,22 +1,25 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
+
+from opentelemetry import trace
 
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, chat, embed
 from app.core.vectors import dot, normalize
 from app.pipeline.tabularity import tabularity_score
-from opentelemetry import trace
 
 _tracer = trace.get_tracer("polyrag.pipeline")
+
 
 @dataclass(frozen=True)
 class RouteDecision:
     route: str
-    decision_stage: str # "heuristic" | "embedding" | "llm_judge"
+    decision_stage: str  # "heuristic" | "embedding" | "llm_judge"
     scores: dict[str, float]
 
     @property
-    def score_top1(self)-> float:
+    def score_top1(self) -> float:
         return self._ranked[0]
 
     @property
@@ -31,12 +34,13 @@ class RouteDecision:
     @property
     def _ranked(self) -> list[float]:
         return sorted(self.scores.values(), reverse=True)
-    
+
 
 def _best_route_scores(vector: list[float], anchors: dict[str, list[list[float]]]) -> dict[str, float]:
     # For each route, the score is the cosine against its BEST-matching anchor
     # (a 1-nearest-neighbor classifier per route), not an average of all anchors.
     return {route: max(dot(vector, a) for a in route_anchors) for route, route_anchors in anchors.items()}
+
 
 async def _ask_judge(clients: LlamaClients, text: str, route_a: str, route_b: str, settings: Settings) -> str:
     prompt = settings.router.llm_judge_prompt.format(
@@ -70,16 +74,22 @@ async def _llm_judge(clients: LlamaClients, text: str, route_a: str, route_b: st
         # potentially-biased answer, fall back to the deterministic Stage 2 winner.
         return route_a
 
+
 class Router:
     """Precomputes route anchors once; route() reuses them for every chunk/question"""
 
-    def __init__(self, anchors: dict[str, list[list[float]]], clients: LlamaClients, settings: Settings) -> None:
+    def __init__(
+        self,
+        anchors: dict[str, list[list[float]]],
+        clients: LlamaClients,
+        settings: Settings,
+    ) -> None:
         self._anchors = anchors
         self._clients = clients
         self._settings = settings
 
     @classmethod
-    async def create(cls, clients: LlamaClients, settings: Settings | None = None) -> "Router":
+    async def create(cls, clients: LlamaClients, settings: Settings | None = None) -> Router:
         settings = settings or load_config()
         anchors: dict[str, list[list[float]]] = {}
         for route_name, route_cfg in settings.router.routes.items():
@@ -93,7 +103,11 @@ class Router:
         # Stage 1: heuristic — cheap, no embedding call at all.
         heuristic_score = tabularity_score(text)
         if heuristic_score >= cfg.tau_heuristic:
-            return RouteDecision(route="relational", decision_stage="heuristic", scores={"relational": heuristic_score})
+            return RouteDecision(
+                route="relational",
+                decision_stage="heuristic",
+                scores={"relational": heuristic_score},
+            )
         # Stage 2: cosine + margin against precomputed anchors.
         raw_vector = (await embed(self._clients.embeddings, [text]))[0]
         vector = normalize(raw_vector)

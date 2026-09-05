@@ -78,9 +78,7 @@ def create_app() -> FastAPI:
     # /health is excluded because the UI polls it on a timer, and its spans were
     # evicting the conversation's trace from the panel every 10 seconds. Chrome
     # watching itself is noise, not observability.
-    FastAPIInstrumentor.instrument_app(
-        app, excluded_urls="api/v1/telemetry,api/v1/health,api/v1/chat/stream"
-    )
+    FastAPIInstrumentor.instrument_app(app, excluded_urls="api/v1/telemetry,api/v1/health,api/v1/chat/stream")
     app.include_router(api_router)
     return app
 

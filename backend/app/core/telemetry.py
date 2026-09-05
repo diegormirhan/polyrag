@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
@@ -60,9 +61,7 @@ class LiveSpanExporter(SpanExporter):
 def setup_telemetry(settings: Settings) -> LiveSpanExporter:
     """Installs the global tracer provider. Returns the exporter the API reads from."""
     exporter = LiveSpanExporter(settings.telemetry.ring_buffer_size)
-    provider = TracerProvider(
-        resource=Resource.create({"service.name": settings.telemetry.service_name})
-    )
+    provider = TracerProvider(resource=Resource.create({"service.name": settings.telemetry.service_name}))
     # Simple, not Batch: the panel is live, so a span has to leave the SDK the
     # moment it ends instead of waiting for a batch window to close.
     provider.add_span_processor(SimpleSpanProcessor(exporter))
