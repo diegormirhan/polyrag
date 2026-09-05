@@ -143,11 +143,13 @@ class Ingestor:
             if not frame.empty:
                 await self._rags[route].ingest((frame, _table_name(path, index)))
                 return route
-            # The router reaches `relational` for content that merely LOOKS tabular:
-            # the tabularity heuristic falls back to comma/digit density (a receipt
-            # full of prices clears the threshold with no table in it), and the
-            # embedding stage never inspects structure at all. SQLite needs real rows
-            # and columns, so a chunk with no table in it is kept as free text.
+            # The router reaches `relational` for content that merely reads as
+            # tabular. The path is the embedding stage, which weighs meaning and
+            # never inspects structure at all — measured, the receipt that caused
+            # this scores 0.53 on the tabularity heuristic, well under its 0.8
+            # threshold, so the heuristic was not the one that let it through.
+            # SQLite needs real rows and columns, so a chunk holding no table is
+            # kept as free text.
             route = "vectorial"
 
         await self._rags[route].ingest(chunk)
