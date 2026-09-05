@@ -52,6 +52,7 @@ async def lifespan(app: FastAPI):
     watcher = asyncio.create_task(_watch_data_drop(app, settings.ingest.watch_interval_s))
     yield
     watcher.cancel()
+    await clients.aclose()
 
 
 def create_app() -> FastAPI:

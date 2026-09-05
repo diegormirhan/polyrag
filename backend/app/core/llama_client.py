@@ -28,6 +28,16 @@ class LlamaClients:
         self.embeddings = _client(settings.llama.embeddings.host, settings.llama.embeddings.port)
         self.judge = _client(settings.llama.judge.host, settings.llama.judge.port)
 
+    async def aclose(self) -> None:
+        """Releases the HTTP pools.
+
+        Without this the connections are torn down by interpreter shutdown, which
+        surfaces as httpcore async-generator tracebacks that look like failures
+        and are not.
+        """
+        for client in (self.llm, self.ocr, self.embeddings, self.judge):
+            await client.close()
+
 
 async def chat(
     client: AsyncOpenAI,
@@ -73,12 +83,16 @@ async def chat_stream(
             stream_options={"include_usage": True},
             extra_body={"chat_template_kwargs": {"enable_thinking": enable_thinking}},
         )
-        async for chunk in stream:
-            # The usage chunk arrives last and carries no choices of its own.
-            if chunk.usage is not None:
-                span.set_attribute("llm.completion_tokens", chunk.usage.completion_tokens)
-            if chunk.choices and (delta := chunk.choices[0].delta.content):
-                yield delta
+        # `async with`, not a bare loop: the stream holds an open HTTP response,
+        # and letting garbage collection close it leaks a connection per answer
+        # and surfaces as httpcore teardown tracebacks that look like failures.
+        async with stream:
+            async for chunk in stream:
+                # The usage chunk arrives last and carries no choices of its own.
+                if chunk.usage is not None:
+                    span.set_attribute("llm.completion_tokens", chunk.usage.completion_tokens)
+                if chunk.choices and (delta := chunk.choices[0].delta.content):
+                    yield delta
 
 
 async def embed(client: AsyncOpenAI, texts: list[str]) -> list[list[float]]:
