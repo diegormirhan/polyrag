@@ -1,0 +1,41 @@
+mes,regiao,produto,unidades,receita
+janeiro,Norte,Armazenagem,42,100800
+janeiro,Norte,Frete Rodoviario,120,222000
+janeiro,Nordeste,Armazenagem,88,211200
+janeiro,Nordeste,Frete Rodoviario,210,388500
+janeiro,Centro-Oeste,Armazenagem,61,146400
+janeiro,Centro-Oeste,Frete Rodoviario,156,288600
+janeiro,Sudeste,Armazenagem,174,417600
+janeiro,Sudeste,Frete Rodoviario,402,743700
+janeiro,Sul,Armazenagem,79,189600
+janeiro,Sul,Frete Rodoviario,188,347800
+fevereiro,Norte,Armazenagem,45,108000
+fevereiro,Norte,Frete Rodoviario,135,249750
+fevereiro,Nordeste,Armazenagem,91,218400
+fevereiro,Nordeste,Frete Rodoviario,198,366300
+fevereiro,Centro-Oeste,Armazenagem,58,139200
+fevereiro,Centro-Oeste,Frete Rodoviario,162,299700
+fevereiro,Sudeste,Armazenagem,181,434400
+fevereiro,Sudeste,Frete Rodoviario,418,773300
+fevereiro,Sul,Armazenagem,82,196800
+fevereiro,Sul,Frete Rodoviario,195,360750
+marco,Norte,Armazenagem,51,122400
+marco,Norte,Frete Rodoviario,128,236800
+marco,Nordeste,Armazenagem,84,201600
+marco,Nordeste,Frete Rodoviario,233,431050
+marco,Centro-Oeste,Armazenagem,66,158400
+marco,Centro-Oeste,Frete Rodoviario,171,316350
+marco,Sudeste,Armazenagem,190,456000
+marco,Sudeste,Frete Rodoviario,445,823250
+marco,Sul,Armazenagem,88,211200
+marco,Sul,Frete Rodoviario,182,336700
+abril,Norte,Armazenagem,48,115200
+abril,Norte,Frete Rodoviario,141,260850
+abril,Nordeste,Armazenagem,96,230400
+abril,Nordeste,Frete Rodoviario,245,453250
+abril,Centro-Oeste,Armazenagem,70,168000
+abril,Centro-Oeste,Frete Rodoviario,168,310800
+abril,Sudeste,Armazenagem,203,487200
+abril,Sudeste,Frete Rodoviario,461,852850
+abril,Sul,Armazenagem,85,204000
+abril,Sul,Frete Rodoviario,201,371850
