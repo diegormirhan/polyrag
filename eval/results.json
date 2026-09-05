@@ -1,0 +1,701 @@
+{
+  "summary": {
+    "overall": {
+      "questions": 40,
+      "router_accuracy": 0.875,
+      "recall@1": 0.42857142857142855,
+      "recall@5": 0.5714285714285714,
+      "recall@10": 0.5714285714285714,
+      "mrr": 0.5178571428571429,
+      "empty_retrieval": 0.39285714285714285,
+      "answer_facts": 0.7428571428571429,
+      "seconds_avg": 0.9269127099999878
+    },
+    "graph": {
+      "questions": 16,
+      "router_accuracy": 1.0,
+      "recall@1": 0.4375,
+      "recall@5": 0.625,
+      "recall@10": 0.625,
+      "mrr": 0.5625,
+      "empty_retrieval": 0.375,
+      "answer_facts": 0.6666666666666666,
+      "seconds_avg": 0.9738742749999574
+    },
+    "relational": {
+      "questions": 12,
+      "router_accuracy": 1.0,
+      "recall@1": null,
+      "recall@5": null,
+      "recall@10": null,
+      "mrr": null,
+      "empty_retrieval": null,
+      "answer_facts": 0.8333333333333334,
+      "seconds_avg": 0.9772575500000281
+    },
+    "vectorial": {
+      "questions": 12,
+      "router_accuracy": 0.5833333333333334,
+      "recall@1": 0.4166666666666667,
+      "recall@5": 0.5,
+      "recall@10": 0.5,
+      "mrr": 0.4583333333333333,
+      "empty_retrieval": 0.4166666666666667,
+      "answer_facts": 0.75,
+      "seconds_avg": 0.813952449999988
+    }
+  },
+  "questions": [
+    {
+      "question": "Qual foi a receita total da regiao Sudeste?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A receita total da região Sudeste foi de 4.988.300, conforme indicado no contexto.",
+      "seconds": 1.0857616000002963
+    },
+    {
+      "question": "Qual a receita total da regiao Nordeste?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A receita total da região Nordeste é de 2.500.700, conforme indicado no contexto.",
+      "seconds": 1.0405167999997502
+    },
+    {
+      "question": "Quanto a regiao Norte faturou no total?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "O contexto fornecido não contém informações sobre a região Norte, apenas o valor total de receita de 1.415.800. Portanto, não é possível determinar quanto a região Norte faturou com base nos dados disponíveis.",
+      "seconds": 1.2548605000001771
+    },
+    {
+      "question": "Qual foi a receita total de todas as regioes somadas?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A receita total de todas as regiões somadas foi de 12.950.950.",
+      "seconds": 0.8106386999997994
+    },
+    {
+      "question": "Qual foi a receita do mes de marco?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "O contexto fornece apenas o valor total da receita (3.293.750), mas não especifica qual mês esse valor corresponde. Portanto, não é possível determinar a receita do mês de março com base nas informações disponíveis.",
+      "seconds": 1.196111700000074
+    },
+    {
+      "question": "Qual foi a receita do mes de abril?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": false,
+      "missing_facts": [
+        "3.454.400"
+      ],
+      "answer": "O contexto fornecido não contém informações sobre a receita do mês de abril.",
+      "seconds": 0.778048499999386
+    },
+    {
+      "question": "Quantas unidades de Armazenagem foram vendidas no total?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "1882 unidades de Armazenagem foram vendidas no total.",
+      "seconds": 0.7608786000000691
+    },
+    {
+      "question": "Quantas unidades de Frete Rodoviario foram vendidas?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "4559 unidades de Frete Rodoviário foram vendidas.",
+      "seconds": 0.788233900000705
+    },
+    {
+      "question": "Qual a receita total do produto Frete Rodoviario?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "O contexto fornece apenas o valor total da receita (8.434.150), mas não especifica qual produto gerou esse valor. Portanto, não é possível determinar a receita total do produto Frete Rodoviario com base nas informações disponíveis.",
+      "seconds": 1.3071034000004147
+    },
+    {
+      "question": "Qual regiao teve a maior receita?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "O contexto fornecido não contém informações sobre receitas, apenas a lista de uma região chamada Sudeste. Portanto, é impossível determinar qual região teve a maior receita com base nos dados disponíveis.",
+      "seconds": 1.0557816000000457
+    },
+    {
+      "question": "Qual regiao teve a menor receita?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": false,
+      "missing_facts": [
+        "Norte"
+      ],
+      "answer": "O contexto fornecido não contém informações sobre receitas, apenas uma lista de regiões. Portanto, é impossível determinar qual região teve a menor receita com base nos dados disponíveis.",
+      "seconds": 1.0022482999993372
+    },
+    {
+      "question": "Quantas unidades foram vendidas ao todo?",
+      "expected_route": "relational",
+      "actual_route": "relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "Foram vendidas 6441 unidades ao todo.",
+      "seconds": 0.646907000000283
+    },
+    {
+      "question": "O que motivou a criacao do Sistema Atlas?",
+      "expected_route": "vectorial",
+      "actual_route": "vectorial",
+      "route_ok": true,
+      "recall": {
+        "1": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 9,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A dor de ter que realizar uma reconciliação mensal manual que consumia uma semana inteira de trabalho motivou a criação do projeto que viria a se tornar o Sistema Atlas. Isso ocorreu após a abertura do centro de distribuição de Recife em 2018, quando a empresa precisou operar dois fusos operacionais distintos simultaneamente com planilhas separadas.",
+      "seconds": 1.1159873000005973
+    },
+    {
+      "question": "Em que ano a Meridiano Logistica foi fundada?",
+      "expected_route": "vectorial",
+      "actual_route": "vectorial",
+      "route_ok": true,
+      "recall": {
+        "1": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 9,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A Meridiano Logística foi fundada em 2011.",
+      "seconds": 0.6896429999997054
+    },
+    {
+      "question": "Onde a empresa comecou a operar?",
+      "expected_route": "vectorial",
+      "actual_route": "vectorial",
+      "route_ok": true,
+      "recall": {
+        "1": 0.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 0.5,
+      "retrieved": 9,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A empresa começou a operar em 2011 numa sala alugada em Belém.",
+      "seconds": 0.3909059999996316
+    },
+    {
+      "question": "Qual era a conviccao dos fundadores sobre o gargalo da logistica?",
+      "expected_route": "vectorial",
+      "actual_route": "vectorial",
+      "route_ok": true,
+      "recall": {
+        "1": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 9,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "Os fundadores acreditavam que o gargalo da logística no Norte do país não era a estrada, mas sim a informação. Eles tinham a convicção de que ninguém sabia onde a carga estava.",
+      "seconds": 1.0460712000003696
+    },
+    {
+      "question": "Em quantas regioes a empresa opera hoje?",
+      "expected_route": "vectorial",
+      "actual_route": "relational",
+      "route_ok": false,
+      "recall": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0
+      },
+      "reciprocal_rank": 0.0,
+      "retrieved": 0,
+      "facts_ok": false,
+      "missing_facts": [
+        "cinco"
+      ],
+      "answer": "A empresa opera hoje em 5 regiões.",
+      "seconds": 1.0140054000003147
+    },
+    {
+      "question": "Quantas pessoas a empresa emprega?",
+      "expected_route": "vectorial",
+      "actual_route": "relational",
+      "route_ok": false,
+      "recall": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0
+      },
+      "reciprocal_rank": 0.0,
+      "retrieved": 0,
+      "facts_ok": false,
+      "missing_facts": [
+        "quatrocentas"
+      ],
+      "answer": "A empresa emprega 40 pessoas.",
+      "seconds": 0.9747135999996317
+    },
+    {
+      "question": "Qual e o compromisso publico da empresa?",
+      "expected_route": "vectorial",
+      "actual_route": "vectorial",
+      "route_ok": true,
+      "recall": {
+        "1": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 9,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "O compromisso público da empresa é entregar previsibilidade. Essa escolha define quase tudo que a Meridiano faz, desde a política de aprovação de compras até a decisão de manter os próprios sistemas em vez de terceirizar.",
+      "seconds": 0.7415185999998357
+    },
+    {
+      "question": "O que a empresa priorizou nos primeiros anos em vez de volume?",
+      "expected_route": "vectorial",
+      "actual_route": "vectorial",
+      "route_ok": true,
+      "recall": {
+        "1": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 9,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "Nos primeiros anos, a empresa priorizou o investimento em rastreamento em vez de perseguir volume. Cada caminhão recebeu um terminal e cada entrega passou a gerar um registro para que o cliente pudesse acompanhar o pedido. Essa abordagem de foco em informação e controle foi o diferencial que permitiu à empresa ganhar contratos.",
+      "seconds": 1.3623876999999993
+    },
+    {
+      "question": "O que dizer ao cliente que pergunta onde esta a carga?",
+      "expected_route": "vectorial",
+      "actual_route": "vectorial",
+      "route_ok": true,
+      "recall": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0
+      },
+      "reciprocal_rank": 0.0,
+      "retrieved": 9,
+      "facts_ok": null,
+      "missing_facts": [],
+      "answer": "Diga que a informação não está disponível, informe qual será o próximo momento em que ela estará disponível e prometa retornar ao cliente nesse horário, mesmo que nada tenha mudado. O retorno prometido e cumprido vale mais do que a informação que ele traz.",
+      "seconds": 1.2004660000002332
+    },
+    {
+      "question": "Como o atendimento deve agir quando nao ha informacao disponivel?",
+      "expected_route": "vectorial",
+      "actual_route": "graph",
+      "route_ok": false,
+      "recall": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0
+      },
+      "reciprocal_rank": 0.0,
+      "retrieved": 0,
+      "facts_ok": null,
+      "missing_facts": [],
+      "answer": "Não encontrei nada nas bases sobre isso.",
+      "seconds": 0.20932619999985036
+    },
+    {
+      "question": "Que tipo de linguagem o atendimento deve evitar com o cliente?",
+      "expected_route": "vectorial",
+      "actual_route": "graph",
+      "route_ok": false,
+      "recall": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0
+      },
+      "reciprocal_rank": 0.0,
+      "retrieved": 0,
+      "facts_ok": null,
+      "missing_facts": [],
+      "answer": "Não encontrei nada nas bases sobre isso.",
+      "seconds": 0.47371990000010555
+    },
+    {
+      "question": "Como uma reclamacao de cliente deve ser tratada?",
+      "expected_route": "vectorial",
+      "actual_route": "graph",
+      "route_ok": false,
+      "recall": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0
+      },
+      "reciprocal_rank": 0.0,
+      "retrieved": 0,
+      "facts_ok": null,
+      "missing_facts": [],
+      "answer": "Não encontrei nada nas bases sobre isso.",
+      "seconds": 0.548684499999581
+    },
+    {
+      "question": "Uma compra de oitenta mil reais do Fornecedor Vega precisa de qual aprovacao?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 0.5,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 10,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A compra de oitenta mil reais do Fornecedor Vega requer aprovação prévia da Diretoria Financeira, pois o valor excede o limite de cinquenta mil reais estabelecido na Política PC-04. O Fornecedor Vega opera sob o Contrato Marco 2026, que segue integralmente a Política PC-04. Portanto, a Diretoria Financeira deve aprovar a aquisição.",
+      "seconds": 1.9861484000002747
+    },
+    {
+      "question": "Quem aprova uma compra de trinta mil reais?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0
+      },
+      "reciprocal_rank": 0.0,
+      "retrieved": 0,
+      "facts_ok": false,
+      "missing_facts": [
+        "Gerente de Suprimentos"
+      ],
+      "answer": "Não encontrei nada nas bases sobre isso.",
+      "seconds": 0.6017962999994779
+    },
+    {
+      "question": "Compras abaixo de dez mil reais precisam de aprovacao?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0
+      },
+      "reciprocal_rank": 0.0,
+      "retrieved": 0,
+      "facts_ok": null,
+      "missing_facts": [],
+      "answer": "Não encontrei nada nas bases sobre isso.",
+      "seconds": 0.5225020999996559
+    },
+    {
+      "question": "Os pedidos processados pelo Sistema Atlas seguem qual politica de aprovacao?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 0.5,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 10,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "Os pedidos da região Norte, processados pelo Sistema Atlas, seguem a Política PC-09. Esta política exige dupla aprovação antes do faturamento, envolvendo o Gerente Regional e a Diretoria de Operações.",
+      "seconds": 0.9668596999999863
+    },
+    {
+      "question": "Quem participa da dupla aprovacao exigida na regiao Norte?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0
+      },
+      "reciprocal_rank": 0.0,
+      "retrieved": 0,
+      "facts_ok": false,
+      "missing_facts": [
+        "Gerente Regional",
+        "Diretoria de Operacoes"
+      ],
+      "answer": "Não encontrei nada nas bases sobre isso.",
+      "seconds": 0.21197049999955198
+    },
+    {
+      "question": "O Fornecedor Vega ainda pode ser homologado?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 10,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "Não, o Fornecedor Vega não pode ser homologado. Ele perdeu a Certificação ISO 9001 em fevereiro, e a homologação de qualquer fornecedor depende dessa certificação válida. O Comitê de Riscos revisa todos os fornecedores que perdem a certificação, o que impede a homologação.",
+      "seconds": 1.5523591999999553
+    },
+    {
+      "question": "Quem pode suspender o Contrato Marco 2026?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 0.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 0.5,
+      "retrieved": 10,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "O Comitê de Riscos pode suspender o Contrato Marco 2026. Isso ocorre quando um fornecedor perde a Certificação ISO 9001 válida.",
+      "seconds": 1.2725817000000461
+    },
+    {
+      "question": "Quais fornecedores operam sob o Contrato Marco 2026?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 10,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "O Fornecedor Vega opera sob o Contrato Marco 2026 desde janeiro. O Fornecedor Kappa opera sob o Contrato Marco 2026 desde março. Nenhuma outra empresa é mencionada como operando sob este contrato no contexto.",
+      "seconds": 1.4141312000001562
+    },
+    {
+      "question": "Se o Banco de Dados Orion entrar em manutencao, quais dados ficam inacessiveis?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 10,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "Durante a manutenção do Banco de Dados Órion, o Sistema Atlas fica indisponível. Como o Sistema Atlas armazena dados pessoais de clientes e depende do Banco de Dados Órion para persistência, esses dados pessoais ficam inacessíveis. O Banco de Dados Vesta replica os dados a cada seis horas, mas não há menção de que ele esteja disponível durante a manutenção do Órion.",
+      "seconds": 2.190543300000172
+    },
+    {
+      "question": "Quando ocorre a manutencao do Banco de Dados Orion?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 10,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A manutenção do Banco de Dados Órion ocorre no primeiro domingo de cada mês. Durante esse período, o Sistema Atlas fica indisponível.",
+      "seconds": 1.5339543999998568
+    },
+    {
+      "question": "O que acontece com os pagamentos se o Gateway Iris falhar?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 10,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "Uma falha no Gateway Íris interrompe todos os pagamentos do Sistema Helios. O Sistema Helios depende desse gateway para autorizar transações.",
+      "seconds": 0.861703800000214
+    },
+    {
+      "question": "De qual sistema o Sistema Helios depende para validar pedidos?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 10,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "O Sistema Helios depende do Sistema Atlas para validar cada pedido.",
+      "seconds": 0.5856151999996655
+    },
+    {
+      "question": "Qual norma regula o tratamento de dados pessoais de clientes?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0
+      },
+      "reciprocal_rank": 0.0,
+      "retrieved": 0,
+      "facts_ok": false,
+      "missing_facts": [
+        "NC-11"
+      ],
+      "answer": "Não encontrei nada nas bases sobre isso.",
+      "seconds": 0.5029619000006278
+    },
+    {
+      "question": "Por quanto tempo os registros financeiros devem ser guardados?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0
+      },
+      "reciprocal_rank": 0.0,
+      "retrieved": 0,
+      "facts_ok": false,
+      "missing_facts": [
+        "sessenta"
+      ],
+      "answer": "Não encontrei nada nas bases sobre isso.",
+      "seconds": 0.4896774999997433
+    },
+    {
+      "question": "O que a Norma NC-11 exige antes de exportar dados para terceiros?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 0.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 0.5,
+      "retrieved": 10,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A Norma NC-11 exige anonimização antes de qualquer exportação para terceiros.",
+      "seconds": 0.6780026999995243
+    },
+    {
+      "question": "Uma exportacao sem anonimizacao e reportada para quem?",
+      "expected_route": "graph",
+      "actual_route": "graph",
+      "route_ok": true,
+      "recall": {
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0
+      },
+      "reciprocal_rank": 0.0,
+      "retrieved": 0,
+      "facts_ok": false,
+      "missing_facts": [
+        "Diretoria Executiva"
+      ],
+      "answer": "Não encontrei nada nas bases sobre isso.",
+      "seconds": 0.21118050000040967
+    }
+  ]
+}

@@ -1,0 +1,220 @@
+# Golden set for scripts/evaluate.py, written against the demo/ corpus.
+#
+#   route     the store the router should choose
+#   relevant  substrings that identify the chunks a correct retrieval must return.
+#             Markers rather than chunk ids because ids are derived from content
+#             and change whenever the corpus is re-chunked; a marker survives that.
+#             Omitted for relational — SQL returns rows, not chunks, so recall@k
+#             does not apply there.
+#   facts     substrings the ANSWER must contain. Proper nouns and figures only,
+#             never prose: those are the parts a model cannot legitimately reword,
+#             so a substring check measures correctness rather than phrasing.
+#
+# Matching ignores case, accents and thousands separators, so "4.988.300",
+# "4988300" and "R$ 4.988.300" all count as the same figure.
+#
+# 40 questions, which is what a 20-chunk corpus honestly supports. More would
+# be the same questions rephrased, which inflates the denominator without
+# measuring anything new.
+
+# --------------------------------------------------------------------------- #
+# relational — the figure has to be exact, and it comes from SQL, not from a
+# model adding numbers in prose
+# --------------------------------------------------------------------------- #
+
+- question: Qual foi a receita total da regiao Sudeste?
+  route: relational
+  facts: ["4.988.300"]
+
+- question: Qual a receita total da regiao Nordeste?
+  route: relational
+  facts: ["2.500.700"]
+
+- question: Quanto a regiao Norte faturou no total?
+  route: relational
+  facts: ["1.415.800"]
+
+- question: Qual foi a receita total de todas as regioes somadas?
+  route: relational
+  facts: ["12.950.950"]
+
+- question: Qual foi a receita do mes de marco?
+  route: relational
+  facts: ["3.293.750"]
+
+- question: Qual foi a receita do mes de abril?
+  route: relational
+  facts: ["3.454.400"]
+
+- question: Quantas unidades de Armazenagem foram vendidas no total?
+  route: relational
+  facts: ["1.882"]
+
+- question: Quantas unidades de Frete Rodoviario foram vendidas?
+  route: relational
+  facts: ["4.559"]
+
+- question: Qual a receita total do produto Frete Rodoviario?
+  route: relational
+  facts: ["8.434.150"]
+
+- question: Qual regiao teve a maior receita?
+  route: relational
+  facts: ["Sudeste"]
+
+- question: Qual regiao teve a menor receita?
+  route: relational
+  facts: ["Norte"]
+
+- question: Quantas unidades foram vendidas ao todo?
+  route: relational
+  facts: ["6.441"]
+
+# --------------------------------------------------------------------------- #
+# vectorial — narrative and guidance, where the question shares few words with
+# the passage that answers it
+# --------------------------------------------------------------------------- #
+
+- question: O que motivou a criacao do Sistema Atlas?
+  route: vectorial
+  relevant: ["centro de distribuicao de Recife"]
+  facts: ["Recife"]
+
+- question: Em que ano a Meridiano Logistica foi fundada?
+  route: vectorial
+  relevant: ["nasceu em 2011"]
+  facts: ["2011"]
+
+- question: Onde a empresa comecou a operar?
+  route: vectorial
+  relevant: ["nasceu em 2011"]
+  facts: ["Belem"]
+
+- question: Qual era a conviccao dos fundadores sobre o gargalo da logistica?
+  route: vectorial
+  relevant: ["nao era estrada"]
+  facts: ["informacao"]
+
+- question: Em quantas regioes a empresa opera hoje?
+  route: vectorial
+  relevant: ["opera em cinco regioes"]
+  facts: ["cinco"]
+
+- question: Quantas pessoas a empresa emprega?
+  route: vectorial
+  relevant: ["quatrocentas pessoas"]
+  facts: ["quatrocentas"]
+
+- question: Qual e o compromisso publico da empresa?
+  route: vectorial
+  relevant: ["entregar previsibilidade"]
+  facts: ["previsibilidade"]
+
+- question: O que a empresa priorizou nos primeiros anos em vez de volume?
+  route: vectorial
+  relevant: ["investiu em rastreamento"]
+  facts: ["rastreamento"]
+
+- question: O que dizer ao cliente que pergunta onde esta a carga?
+  route: vectorial
+  relevant: ["esta a caminho"]
+  facts: []
+
+- question: Como o atendimento deve agir quando nao ha informacao disponivel?
+  route: vectorial
+  relevant: ["informacao nao esta disponivel"]
+  facts: []
+
+- question: Que tipo de linguagem o atendimento deve evitar com o cliente?
+  route: vectorial
+  relevant: ["jargao interno"]
+  facts: []
+
+- question: Como uma reclamacao de cliente deve ser tratada?
+  route: vectorial
+  relevant: ["reclamacao e informacao de graca"]
+  facts: []
+
+# --------------------------------------------------------------------------- #
+# graph — rules, dependencies, and the chains that need more than one hop
+# --------------------------------------------------------------------------- #
+
+- question: Uma compra de oitenta mil reais do Fornecedor Vega precisa de qual aprovacao?
+  route: graph
+  relevant: ["Politica PC-04", "Contrato Marco 2026"]
+  facts: ["Diretoria Financeira"]
+
+- question: Quem aprova uma compra de trinta mil reais?
+  route: graph
+  relevant: ["Politica PC-04"]
+  facts: ["Gerente de Suprimentos"]
+
+- question: Compras abaixo de dez mil reais precisam de aprovacao?
+  route: graph
+  relevant: ["Politica PC-04"]
+  facts: []
+
+- question: Os pedidos processados pelo Sistema Atlas seguem qual politica de aprovacao?
+  route: graph
+  relevant: ["Politica PC-09", "Sistema Atlas processa"]
+  facts: ["PC-09"]
+
+- question: Quem participa da dupla aprovacao exigida na regiao Norte?
+  route: graph
+  relevant: ["Politica PC-09"]
+  facts: ["Gerente Regional", "Diretoria de Operacoes"]
+
+- question: O Fornecedor Vega ainda pode ser homologado?
+  route: graph
+  relevant: ["Homologacao de fornecedores"]
+  facts: ["ISO 9001"]
+
+- question: Quem pode suspender o Contrato Marco 2026?
+  route: graph
+  relevant: ["Homologacao de fornecedores"]
+  facts: ["Comite de Riscos"]
+
+- question: Quais fornecedores operam sob o Contrato Marco 2026?
+  route: graph
+  relevant: ["Contratos marco"]
+  facts: ["Vega", "Kappa"]
+
+- question: Se o Banco de Dados Orion entrar em manutencao, quais dados ficam inacessiveis?
+  route: graph
+  relevant: ["Banco de Dados Orion", "Sistema Atlas"]
+  facts: ["dados pessoais"]
+
+- question: Quando ocorre a manutencao do Banco de Dados Orion?
+  route: graph
+  relevant: ["Banco de Dados Orion"]
+  facts: ["primeiro domingo"]
+
+- question: O que acontece com os pagamentos se o Gateway Iris falhar?
+  route: graph
+  relevant: ["Sistema Helios"]
+  facts: ["Helios"]
+
+- question: De qual sistema o Sistema Helios depende para validar pedidos?
+  route: graph
+  relevant: ["Sistema Helios"]
+  facts: ["Atlas"]
+
+- question: Qual norma regula o tratamento de dados pessoais de clientes?
+  route: graph
+  relevant: ["Norma NC-11"]
+  facts: ["NC-11"]
+
+- question: Por quanto tempo os registros financeiros devem ser guardados?
+  route: graph
+  relevant: ["Norma NC-14"]
+  facts: ["sessenta"]
+
+- question: O que a Norma NC-11 exige antes de exportar dados para terceiros?
+  route: graph
+  relevant: ["Norma NC-11"]
+  facts: ["anonimizacao"]
+
+- question: Uma exportacao sem anonimizacao e reportada para quem?
+  route: graph
+  relevant: ["Auditoria"]
+  facts: ["Diretoria Executiva"]
