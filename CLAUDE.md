@@ -52,7 +52,7 @@ O núcleo do projeto **não** é "usar mais IA em tudo". É o oposto: **usar mat
 |---|---|---|
 | Detectar que um arquivo é tabela | **Heurística/regex pura** (densidade de vírgulas/números) | ✅ **Sim, 100%** |
 | Roteamento semântico (qual RAG?) | **Cosseno + margem** (aritmética pura: mesmo input → mesmo output, bit a bit) | ✅ **Sim, 100%** |
-| Cache semântico (hit/miss?) | **Threshold matemático** (cosseno ≥ 0.92) | ✅ **Sim, 100%** |
+| Cache semântico (hit/miss?) | **Threshold matemático** (cosseno ≥ 0.80) | ✅ **Sim, 100%** |
 | Rankear chunks no grafo | **Personalized PageRank** (algoritmo determinístico de álgebra linear) | ✅ **Sim, 100%** |
 | Desempatar rota na zona cinzenta | **LLM-as-judge** (limitado e auditado) | ⚠️ IA, restrita ao mínimo |
 | Gerar a resposta final | **LLM** (temperatura fixa e baixa) | ⚠️ IA, única parte "criativa" |
@@ -278,7 +278,7 @@ margem = score_top1 − score_top2
 
 **Regra de decisão (calibrável no `config.yaml`):**
 ```
-SE score_top1 ≥ 0.62  E  margem ≥ 0.08  → rota top1 (confiante)
+SE score_top1 ≥ 0.45  E  margem ≥ 0.08  → rota top1 (confiante)
 SE score_top1 < 0.35                     → fallback: vectorial
 SENÃO                                    → zona cinzenta → LLM juiz
 ```
@@ -389,7 +389,7 @@ Inspirado conceitualmente na lib `semantic-router` (https://semantic-router.read
 3. **Mede similaridade:** cosseno entre o vetor do chunk e **todas** as âncoras. Para cada rota, guarda a âncora mais parecida.
 4. **Ordena e calcula a margem:** `top1` = rota mais parecida, `top2` = segunda, `margem = top1 − top2`.
 5. **Decide:**
-   - `top1 ≥ tau_high (0.62)` **e** `margem ≥ delta (0.08)` → vai para `top1` ✅ (geométrico, custo ~0)
+   - `top1 ≥ tau_high (0.45)` **e** `margem ≥ delta (0.08)` → vai para `top1` ✅ (geométrico, custo ~0)
    - `top1 < tau_low (0.35)` → fallback `vectorial`
    - **senão (zona cinzenta)** → **LLM-as-judge**: o modelo principal lê o chunk + as descrições das rotas e escolhe (custa 2 chamadas de LLM — roda com a ordem das rotas invertida pra checar viés de posição)
 6. **Grava** o chunk na base da rota escolhida. Tudo registrado no span: `router.route`, `router.score_top1`, `router.score_top2`, `router.margin`, `router.decision_stage`.
@@ -397,6 +397,9 @@ Inspirado conceitualmente na lib `semantic-router` (https://semantic-router.read
 > **O mesmo componente serve os dois momentos:** na **ingestão** o input é o *conteúdo do chunk* ("onde guardo?"); na **busca** o input é a *pergunta do usuário* ("onde procuro?"). Mesmas âncoras, mesma matemática, uma engine só. É por isso que as frases-âncora do `config.yaml` são tão importantes: elas *treinam* o roteador sem escrever código.
 
 #### Perguntas compostas: roteamento multi-rota (fan-out + RRF)
+
+> ⚠️ **Desenho, não código: NADA disto existe na v0.1.0.** O roteador escolhe uma rota só.
+> Registrado aqui como projeto futuro — não citar como recurso do sistema.
 
 Algumas perguntas exigem dados de mais de uma base:
 
@@ -426,7 +429,7 @@ Ex: chunk rank #2 no SQL + rank #5 no grafo
 
 ### O CAG — Cache Semântico (Dia 4, no caminho de busca)
 
-Pergunta repetida (ou *quase* repetida: "total de vendas" ≈ "soma das vendas") não deve pagar o custo do pipeline inteiro. Guardamos `(embedding da pergunta, resposta)` num índice FAISS em RAM. Se `cosseno ≥ 0.92` com algo já respondido → devolve na hora (**latência ~0ms, span com `cache.hit=true`**). Mesma matemática de 4.3, outra aplicação.
+Pergunta repetida (ou *quase* repetida: "total de vendas" ≈ "soma das vendas") não deve pagar o custo do pipeline inteiro. Guardamos `(embedding da pergunta, resposta)` num índice FAISS em RAM. Se `cosseno ≥ 0.80` com algo já respondido → devolve na hora (**latência ~0ms, span com `cache.hit=true`**). Mesma matemática de 4.3, outra aplicação.
 
 ### AVALIAÇÃO OFFLINE — recall, precisão e exatidão de resposta (Dia 11)
 
