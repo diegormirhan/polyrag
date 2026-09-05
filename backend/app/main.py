@@ -76,10 +76,15 @@ def create_app() -> FastAPI:
     # "websocket send" span per frame, so one streamed answer produced 72 of them and
     # buried the 17 spans that describe the actual pipeline.
     #
-    # /health is excluded because the UI polls it on a timer, and its spans were
-    # evicting the conversation's trace from the panel every 10 seconds. Chrome
-    # watching itself is noise, not observability.
-    FastAPIInstrumentor.instrument_app(app, excluded_urls="api/v1/telemetry,api/v1/health,api/v1/chat/stream")
+    # /health and /docs are excluded for the same reason at human speed: the UI
+    # polls health on a timer, and SvelteKit preloads the Swagger link on hover.
+    # Both produced traces newer than the conversation's, and the panel shows the
+    # newest one — so merely moving the mouse replaced the pipeline the user had
+    # just run. Chrome watching itself is noise, not observability.
+    FastAPIInstrumentor.instrument_app(
+        app,
+        excluded_urls="api/v1/telemetry,api/v1/health,api/v1/chat/stream,docs,openapi.json",
+    )
     app.include_router(api_router)
     return app
 
