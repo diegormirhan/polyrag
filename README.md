@@ -159,8 +159,8 @@ Needs Python 3.12, Node 22, and roughly 6 GB of VRAM.
 uv sync
 npm --prefix frontend ci
 
-# 2 · runtimes (llama.cpp Vulkan build + Qdrant), unpacked into bin/
-#     and GGUF models into models/ — see config.yaml for the expected paths
+# 2 · binaries and models — about 5 GB, skips whatever is already there
+uv run python scripts/fetch_runtimes.py
 
 # 3 · everything the backend needs: four llama-servers and Qdrant
 uv run python scripts/start_servers.py
