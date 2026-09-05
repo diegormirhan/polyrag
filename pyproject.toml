@@ -1,7 +1,7 @@
 [project]
 name = "polyrag"
 version = "0.1.0"
-description = "Add your description here"
+description = "Federated multi-modal RAG with deterministic semantic routing, running locally on AMD via Vulkan."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
