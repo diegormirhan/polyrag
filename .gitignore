@@ -43,7 +43,7 @@ frontend/dist/
 
 # Working notes and drafts — kept locally, not published with the repo
 ADR-0001-DESEMPATE-ZONA-CINZENTA.md
-ARTICLE.md
+ARTICLE*.md
 CASO-GRAPHIFY-DETERMINISMO.md
 DEVLOG.md
 ESTUDO-MATEMATICA.md
