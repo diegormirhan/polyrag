@@ -145,9 +145,56 @@ Two changes worth their own line, because both were found by instrumenting rathe
   from 0.2 to 0. Sampling was silently corrupting a third of the answers. *(n = 6, one question —
   enough to justify a free change, not enough to be a benchmark.)*
 
-**Retrieval quality is not measured yet.** `recall@k`, `precision@k` and answer correctness against a
-golden set are the next milestone, and this README will carry the curve when it exists. Reporting
-numbers before then would be decoration.
+### Retrieval and answers, on a 40-question golden set
+
+`uv run python scripts/evaluate.py` against the [`demo/`](demo/README.md) corpus. Questions were
+written from the corpus, not from the results.
+
+|              |  n | router | r@1 | r@5 | MRR | empty | facts |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **overall**  | 40 | 88% | 43% | 57% | 0.52 | 39% | 74% |
+| relational   | 12 | 100% | — | — | — | — | 83% |
+| vectorial    | 12 | 58% | 42% | 50% | 0.46 | 42% | 75% |
+| graph        | 16 | 100% | 44% | 62% | 0.56 | 38% | 67% |
+
+`facts` asks whether the answer contained the figure or proper noun it had to contain — restricted
+to what a model cannot legitimately reword, so a substring check measures correctness rather than
+phrasing. `recall@k` does not apply to the relational route, which returns SQL rows rather than
+passages.
+
+**The column that explains the table is `empty`.** Read alone, `recall@5 = 57%` looks like a
+mediocre ranker. It is not:
+
+| | |
+|---|---|
+| recall@5, on questions where retrieval returned anything | **94%** |
+| MRR, same subset | **0.85** |
+| queries that returned an empty list | **39%** |
+
+When retrieval returns something it returns the right passage almost always, usually at rank 1.
+**The failure is coverage, not ranking** — and every single wrong answer with a retrieval target
+behind it came from an empty result, not a badly ordered one.
+
+The cause is structural. Graph search seeds Personalized PageRank from entities extracted out of the
+question, so a question that *describes* what it wants without naming anything — "who approves a
+thirty-thousand purchase", "which rule governs personal data" — finds no seed and returns nothing.
+The entity that would answer it is the answer, not the question.
+
+This measurement changed a decision. The plan had recorded a suspicion that retrieval scores
+clustered too tightly and that reranking was the likely fix. A reranker would have improved nothing
+here: the ordering was already right. Building it before measuring would have been a week spent on
+the wrong half of the pipeline.
+
+Two more findings, both now queued rather than patched:
+
+- **Text-to-SQL loses the question's intent.** `ORDER BY receita ASC LIMIT 1` correctly returned
+  `Norte`, and the model answered "only a list of regions, impossible to determine". The intent
+  lives in the query, and the model is only shown the result.
+- **`vectorial` is the weakest route at 58%.** Counting questions about prose ("how many regions do
+  they operate in") go to `relational`; procedural ones go to `graph`. The vectorial anchors
+  describe narrative and documents and cover neither shape.
+
+Per-question detail, including every answer, is in `eval/results.json`.
 
 ---
 
