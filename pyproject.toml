@@ -27,7 +27,26 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8.3",]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.16.6",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["backend"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "RUF"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Depends() in a signature default IS the FastAPI idiom, not a mutable-default bug.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path"]
+
+[tool.ruff.lint.isort]
+# backend/ is the source root, so `app` is ours — without this ruff files it
+# under third-party and sorts it above fastapi.
+known-first-party = ["app"]
