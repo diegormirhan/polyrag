@@ -100,8 +100,13 @@ def _track_headings(block: str, trail: dict[int, str]) -> None:
         trail[level] = match.group(2).strip()
 
 
+# Deliberately not ">": the breadcrumb is prepended to chunk text that a model
+# reads, and a plain angle bracket reads as markup there.
+TRAIL_SEPARATOR = " › "  # noqa: RUF001
+
+
 def _breadcrumb(trail: dict[int, str]) -> str:
-    return " › ".join(trail[level] for level in sorted(trail))  # noqa: RUF001
+    return TRAIL_SEPARATOR.join(trail[level] for level in sorted(trail))
 
 
 def _split_table_blocks(text: str) -> list[tuple[str, bool]]:
