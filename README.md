@@ -72,9 +72,10 @@ flowchart TB
     otel -.WebSocket.-> ui
 ```
 
-Four models served by `llama.cpp` over Vulkan, each on its own port, all speaking the OpenAI API:
+Three models served by `llama.cpp` over Vulkan, each on its own port, all speaking the OpenAI API:
 **Qwen3.5-4B** (reasoning, SQL, entity extraction, answers, route tiebreaks), **GLM-OCR** (images),
-**BGE-M3** (embeddings). Qdrant runs standalone alongside them.
+**BGE-M3** (embeddings). Qdrant runs standalone alongside them. OCR sleeps when idle and hands its
+VRAM back, so the resident set is about 5.6 GB.
 
 ---
 
@@ -159,10 +160,10 @@ Needs Python 3.12, Node 22, and roughly 6 GB of VRAM.
 uv sync
 npm --prefix frontend ci
 
-# 2 · binaries and models — about 5 GB, skips whatever is already there
+# 2 · binaries and models — about 4.9 GB, skips whatever is already there
 uv run python scripts/fetch_runtimes.py
 
-# 3 · everything the backend needs: four llama-servers and Qdrant
+# 3 · everything the backend needs: three llama-servers and Qdrant
 uv run python scripts/start_servers.py
 
 # 4 · the API
@@ -176,6 +177,13 @@ Then open <http://localhost:5173>, or <http://localhost:8000/docs> for the API.
 
 Drop a file into `data_drop/` and it is ingested within seconds — the hot folder is watched. Or use
 the Corpus tab, which is the same code path.
+
+For something to ask it about, [`demo/`](demo/README.md) holds a six-file corpus about one fictional
+company, plus the questions that exercise each route and the two that do not work:
+
+```bash
+uv run python scripts/load_demo.py --reset
+```
 
 Everything is driven by `config.yaml`: ports, model paths, thresholds, prompts, and the example
 phrases that define each route. **Adding a route is a config change, not a code change.**
