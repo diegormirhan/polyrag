@@ -198,6 +198,71 @@ Per-question detail, including every answer, is in `eval/results.json`.
 
 ---
 
+## The maths, in one page
+
+Nothing here is hidden behind a library call. Every formula below is implemented in this repository
+and covered by tests that run without a GPU.
+
+**Embeddings.** BGE-M3 turns any text into 1024 numbers. Texts that mean similar things point in
+similar directions — meaning becomes geometry, and comparing meanings becomes arithmetic.
+
+**Normalisation.** Dividing a vector by its own length puts every vector on the unit sphere:
+
+```
+‖v‖ = √(v₁² + v₂² + … + vₙ²)          v̂ = v / ‖v‖
+```
+
+That is done once, at ingestion, for a reason. Cosine similarity is normally
+
+```
+cos(θ) = (a · b) / (‖a‖ · ‖b‖)
+```
+
+but for two already-normalised vectors both norms are 1, so **cosine collapses into the dot
+product** — one multiply-add per dimension, no division, no square roots at query time.
+`vectors.py` is nine lines because of that identity.
+
+Cosine rather than Euclidean distance because a longer document produces a longer vector, and length
+is not what the question is about. The angle carries the subject; the magnitude carries the word
+count.
+
+**The routing decision.** Each route owns a handful of example phrases from `config.yaml`, embedded
+once at startup. An incoming text is scored against every anchor, and each route keeps its best
+match — a 1-nearest-neighbour classifier, one per route. Then:
+
+```
+margin = score_top1 − score_top2
+```
+
+The margin, not the raw score, is what the decision turns on. Measured on this corpus the absolute
+cosine sits in a narrow band (0.35–0.62) and separates almost nothing, while the margin separates a
+confident decision from a genuine tie cleanly. That is why `tau_high` is a weak secondary guard and
+`delta_margin` does the work. A tie falls through to a model — the classifier's rejection rule.
+
+**Personalized PageRank.** Ordinary PageRank models a random walk: a node is important if important
+nodes point at it, with a `1−d` chance of teleporting anywhere to avoid getting stuck.
+
+```
+PR(n) = (1−d)/N + d · Σ PR(v) / out(v)          d = 0.85
+```
+
+Personalized PageRank changes one thing: the teleport does not go anywhere, it goes **back to the
+entities named in the question**. The stationary distribution then means "relevant to *this*
+question" rather than "important in general". Multi-hop falls out of it — score flows along edges,
+so a chunk two hops from the question's entity still receives some, which is how an answer can join
+two documents that never mention each other.
+
+**The cache.** A question's embedding is compared against every cached question with FAISS
+`IndexFlatIP` — exact brute force by inner product, which is again cosine because the vectors are
+normalised. Above the threshold, the stored answer is returned in about 8 ms.
+
+**Why this matters here.** These steps are pure functions over numbers, which is what makes them
+testable without a model server, reproducible across runs, and explainable after the fact. The
+router's decision is 8–13 ms of arithmetic whose inputs the panel can show you. That is the whole
+argument.
+
+---
+
 ## Running it
 
 Needs Python 3.12, Node 22, and roughly 6 GB of VRAM.
@@ -240,15 +305,49 @@ phrases that define each route. **Adding a route is a config change, not a code 
 ## Verifying it
 
 ```bash
-uv run pytest tests/ -q          # 24 tests, no servers required
+uv run pytest tests/ -q          # 79 tests, no servers required
 uv run ruff check backend/ scripts/ tests/
-npm --prefix frontend run check  # 179 files, 0 errors
+npm --prefix frontend run check  # 180 files, 0 errors
 ```
 
-The unit tests cover cosine and margin, the read-only SQL guard, triple parsing and the cache. They
-need no GPU and no network — which is the point of keeping that code pure. The scripts under
-`tests/` named `*_integration.py` are run by hand against a live stack and print their results;
-pytest collects nothing from them.
+The unit tests cover cosine and margin, the routing decision, the read-only SQL guard, entity
+normalisation and length limits, the tabularity heuristic, the cache, and every chunking rule. They
+need no GPU and no network — which is the point of keeping that code pure.
+
+The chunking tests exist because chunking is where most of this project's real bugs came from, and
+they are verified by mutation rather than assumed: removing a guard has to fail exactly the test
+that defends it. A regression test that cannot fail is decoration.
+
+The scripts under `tests/` named `*_integration.py` are run by hand against a live stack and print
+their results; pytest collects nothing from them.
+
+```bash
+uv run python scripts/evaluate.py    # the golden set, needs the servers and demo corpus
+```
+
+---
+
+## Seeing it run
+
+The three views are Chat, Corpus and Telemetry. Chat pairs the conversation with a live panel that
+shows the per-route cosine scores, the margin the decision turned on, which stage made the call, and
+the span waterfall as it happens — the routing decision is on screen at about 23 ms, before
+retrieval has even finished.
+
+To reproduce the screenshots and the demo:
+
+```bash
+uv run python scripts/start_servers.py
+uv run python scripts/load_demo.py --reset
+uv run uvicorn --app-dir backend app.main:app --port 8000
+npm --prefix frontend run dev
+```
+
+Then ask, in order: a figure (`Qual foi a receita total da regiao Sudeste?`), something narrative
+(`O que motivou a criacao do Sistema Atlas?`), a chain that crosses two files (`Os pedidos
+processados pelo Sistema Atlas seguem qual politica de aprovacao?`), and finally any of them a
+second time to watch the cache answer in 8 ms. [`demo/README.md`](demo/README.md) has the full
+script, the expected figures, and the two questions that fail.
 
 ---
 
