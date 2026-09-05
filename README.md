@@ -355,9 +355,13 @@ script, the expected figures, and the two questions that fail.
 
 Stated because they are real, not because they are theoretical:
 
-- **Retrieval ranking is weak on dense documents.** On one questionnaire, three of five retrieved
-  passages were irrelevant and all five scored between 0.418 and 0.465 — no score threshold
-  separates that. Reranking is the likely answer; measurement comes first.
+- **Graph search returns nothing when it recognises no entity in the question.** 39% of golden-set
+  queries retrieved an empty list. Conditioned on retrieving anything, recall@5 is 94% and MRR 0.85
+  — so this is coverage, not ranking, and a reranker would fix none of it. Highest-impact open item.
+- **Text-to-SQL is shown the result but not the query it came from**, so a question whose intent
+  lives in the `ORDER BY` can be answered with "impossible to determine" over the correct row.
+- **The `vectorial` route is the weakest at 58%.** Counting and procedural questions about prose
+  land on the other two routes; its anchors describe neither shape.
 - **Graph search re-embeds every entity on every query.** 318 ms of a 514 ms graph lookup, growing
   with the corpus. Entity vectors belong in the ingestion step.
 - **Source files (`.py`, `.ts`, …) are not supported.** Doing it properly needs AST-aware chunking
