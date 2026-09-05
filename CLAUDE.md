@@ -500,7 +500,7 @@ Responda apenas JSON: {"correct": 0|1, "justification": "..."}
 
 ## 6. O MOTOR E A API (o produto open-source)
 
-- **Motor:** `llama.cpp` build oficial Vulkan (`b10287`) — 3 processos `llama-server` (portas 8080/8081/8082), cada um servindo um modelo, todos falando **API OpenAI-compatible** (`/v1/chat/completions`, `/v1/embeddings`). O GLM-OCR sobe com `--sleep-idle-seconds`, então devolve a VRAM sozinho quando não há imagem sendo ingerida.
+- **Motor:** `llama.cpp` Vulkan build `b10287`, servido de uma mirror própria no HF — 3 processos `llama-server` (portas 8080/8081/8082), cada um servindo um modelo, todos falando **API OpenAI-compatible** (`/v1/chat/completions`, `/v1/embeddings`). O GLM-OCR sobe com `--sleep-idle-seconds`, então devolve a VRAM sozinho quando não há imagem sendo ingerida.
 - **API:** FastAPI, rotas sob `/api/v1/`, Swagger automático em `/docs`, WebSockets para streaming de tokens e de telemetria.
 - **Observabilidade:** OTel SDK no FastAPI. Cada etapa (`pipeline.cache`, `pipeline.router`, `pipeline.rag.*`, `pipeline.llm`) gera **spans** com atributos (`router.route`, `router.margin`, `cache.hit`...). Um **exporter customizado** publica os spans em JSON via WebSocket para o frontend — sem Grafana, sem Collector, sem servidor extra.
 
@@ -561,7 +561,7 @@ polyrag/
 │   ├── llama/                  # llama-server.exe (Vulkan)
 │   └── qdrant/qdrant.exe
 ├── scripts/
-│   ├── fetch_runtimes.py      # baixa binários e modelos (~5GB), destinos vindos do config
+│   ├── fetch_runtimes.py      # baixa binários e modelos (~4.9GB), destinos vindos do config
 │   ├── start_servers.py        # sobe os 3 llama-server + Qdrant, tudo do config.yaml
 ├── backend/app/
 │   ├── main.py                 # app factory + lifespan + instrumentação OTel
@@ -587,7 +587,9 @@ uv venv --python 3.12
 uv add fastapi==0.141.1 "uvicorn[standard]==0.52.3" pyyaml==6.0.3 openai numpy faiss-cpu==1.15.0 qdrant-client==1.19.0 networkx pandas openpyxl opentelemetry-sdk==1.44.0 opentelemetry-instrumentation-fastapi python-multipart httpx
 uv add --dev pytest pytest-asyncio ruff
 
-# 3. binários (llama.cpp Vulkan b10287 + Qdrant v1.19.0) e modelos GGUF (~5GB)
+# 3. binários e modelos GGUF (~4.9GB)
+#    llama-server vem da mirror própria (diegomirhan/voice-assistant-binaries),
+#    que fixa um build Vulkan conhecido em vez de seguir a última tag do upstream.
 #    Pula o que já existe; os destinos saem do config.yaml, então o script e o
 #    app não podem discordar sobre onde um arquivo deveria estar.
 uv run python scripts/fetch_runtimes.py

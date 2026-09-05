@@ -2,8 +2,9 @@
 
     uv run python scripts/fetch_runtimes.py
 
-Roughly 5 GB, mostly models. Anything already present is skipped, so re-running
-this only fills in what is missing.
+Roughly 4.9 GB, almost all of it models. Anything already present is skipped, so
+re-running this only fills in what is missing — including after an interrupted
+download, since each file is checked on its own.
 
 Sources are pinned here; destinations come from config.yaml. That split is
 deliberate — a URL is setup metadata, but a path is something the running app
@@ -25,7 +26,15 @@ sys.path.insert(0, str(ROOT / "backend"))
 
 from app.core.config import Settings, load_config  # noqa: E402
 
-LLAMA_BUILD = "b10287"
+HF = "https://huggingface.co/{repo}/resolve/main/{file}"
+HF_TREE = "https://huggingface.co/api/models/{repo}/tree/main/{folder}"
+
+# The llama.cpp Vulkan build, mirrored as loose files rather than taken from the
+# upstream release zip: it pins one known-good build instead of tracking whatever
+# the latest tag happens to contain.
+LLAMA_REPO = "diegomirhan/voice-assistant-binaries"
+LLAMA_FOLDER = "llama-server"
+
 QDRANT_VERSION = "v1.19.0"
 
 
@@ -42,21 +51,13 @@ class Download:
         return self.target.exists()
 
 
-def _downloads(settings: Settings) -> list[Download]:
+def _static(settings: Settings) -> list[Download]:
     llama, qdrant = settings.llama, settings.qdrant
-    hf = "https://huggingface.co/{repo}/resolve/main/{file}"
 
     def model(repo: str, path: Path) -> Download:
-        return Download(path.name, hf.format(repo=repo, file=path.name), ROOT / path)
+        return Download(path.name, HF.format(repo=repo, file=path.name), ROOT / path)
 
     return [
-        Download(
-            f"llama.cpp {LLAMA_BUILD} (Vulkan)",
-            f"https://github.com/ggml-org/llama.cpp/releases/download/{LLAMA_BUILD}"
-            f"/llama-{LLAMA_BUILD}-bin-win-vulkan-x64.zip",
-            ROOT / llama.bin_path,
-            unzip=True,
-        ),
         Download(
             f"Qdrant {QDRANT_VERSION}",
             f"https://github.com/qdrant/qdrant/releases/download/{QDRANT_VERSION}"
@@ -68,6 +69,27 @@ def _downloads(settings: Settings) -> list[Download]:
         model("ggml-org/GLM-OCR-GGUF", llama.ocr.model_path),
         model("ggml-org/GLM-OCR-GGUF", llama.ocr.mmproj_path),
         model("gpustack/bge-m3-GGUF", llama.embeddings.model_path),
+    ]
+
+
+def _llama_binaries(client: httpx.Client, settings: Settings) -> list[Download]:
+    """The llama-server executable and every DLL beside it.
+
+    The file list is read from the mirror rather than pinned here: the set of
+    DLLs a llama.cpp build ships changes between versions, and a list copied into
+    this script would quietly go stale and produce a binary that cannot start.
+    """
+    response = client.get(HF_TREE.format(repo=LLAMA_REPO, folder=LLAMA_FOLDER))
+    response.raise_for_status()
+    destination = (ROOT / settings.llama.bin_path).parent
+    return [
+        Download(
+            f"{LLAMA_FOLDER}/{Path(entry['path']).name}",
+            HF.format(repo=LLAMA_REPO, file=entry["path"]),
+            destination / Path(entry["path"]).name,
+        )
+        for entry in response.json()
+        if entry["type"] == "file"
     ]
 
 
@@ -94,21 +116,23 @@ def _fetch(client: httpx.Client, item: Download) -> None:
 
 def main() -> None:
     settings = load_config()
-    items = _downloads(settings)
-    pending = [item for item in items if not item.done]
 
-    for item in items:
-        if item.done:
-            print(f"  {item.name:<34} ja existe")
-
-    if not pending:
-        print("\ntudo no lugar")
-        return
-
-    print()
     with httpx.Client(follow_redirects=True, timeout=None) as client:
-        for item in pending:
-            _fetch(client, item)
+        items = _static(settings)
+        # Only ask the mirror what it holds when the binary is actually missing,
+        # so a complete install needs no network at all.
+        if not (ROOT / settings.llama.bin_path).exists():
+            items = _llama_binaries(client, settings) + items
+
+        for item in items:
+            if item.done:
+                print(f"  {item.name:<34} ja existe")
+
+        pending = [item for item in items if not item.done]
+        if pending:
+            print()
+            for item in pending:
+                _fetch(client, item)
 
     missing = [item.name for item in items if not item.done]
     if missing:
