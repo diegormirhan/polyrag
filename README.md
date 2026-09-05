@@ -307,7 +307,7 @@ phrases that define each route. **Adding a route is a config change, not a code 
 ```bash
 uv run pytest tests/ -q          # 79 tests, no servers required
 uv run ruff check backend/ scripts/ tests/
-npm --prefix frontend run check  # 180 files, 0 errors
+npm --prefix frontend run check  # 0 errors
 ```
 
 The unit tests cover cosine and margin, the routing decision, the read-only SQL guard, entity
