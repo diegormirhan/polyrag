@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import re
 import sys
 import time
 import unicodedata
@@ -35,21 +36,58 @@ sys.path.insert(0, str(ROOT / "backend"))
 from app.core.llama_client import LlamaClients  # noqa: E402
 from app.pipeline.orchestrator import Orchestrator  # noqa: E402
 
-GOLDEN_SET = ROOT / "eval" / "golden_set.yaml"
-RESULTS = ROOT / "eval" / "results.json"
+EVAL_DIR = ROOT / "eval"
+DEFAULT_SET = EVAL_DIR / "golden_set.yaml"
 RETRIEVE_K = 10
 CUTOFFS = (1, 5, 10)
 
 
-def normalize(text: str) -> str:
-    """Case, accents and thousands separators are formatting, not content.
+# A number written as a word and the same number in digits are the same answer.
+# The corpus spells them out ("cerca de quatrocentas pessoas", "retencao minima de
+# sessenta meses") and the model usually replies in digits, so without this the
+# metric scores orthography: "A empresa opera em 5 regioes" was counted wrong
+# against a gold fact of "cinco". Only the values these corpora actually use --
+# a general parser for Portuguese numerals would be more code than the thing it
+# checks, and every entry here is one that appears in a source document.
+_NUMBER_WORDS = {
+    "um": "1",
+    "uma": "1",
+    "dois": "2",
+    "duas": "2",
+    "tres": "3",
+    "quatro": "4",
+    "cinco": "5",
+    "seis": "6",
+    "sete": "7",
+    "oito": "8",
+    "nove": "9",
+    "dez": "10",
+    "doze": "12",
+    "vinte e quatro": "24",
+    "quarenta": "40",
+    "cinquenta": "50",
+    "sessenta": "60",
+    "cem": "100",
+    "quatrocentas": "400",
+    "quatrocentos": "400",
+}
+# Longest first, so "vinte e quatro" is replaced before "quatro" can eat part of it.
+# The word boundaries are not decoration: without them "um" matches inside "algum"
+# and "seis" inside "seiscentos", which would corrupt every comparison silently.
+_NUMBER_PATTERN = re.compile(r"\b(" + "|".join(sorted(_NUMBER_WORDS, key=len, reverse=True)) + r")\b")
 
-    Without this the metric measures whether the model wrote "4.988.300" or
-    "4988300", which is not what is being evaluated.
+
+def normalize(text: str) -> str:
+    """Strips what is formatting rather than content, on both sides of a comparison.
+
+    Case, accents and thousands separators, so the metric does not measure whether
+    the model wrote "4.988.300" or "4988300"; and number words, so it does not
+    measure whether it wrote "cinco" or "5".
     """
     decomposed = unicodedata.normalize("NFKD", text)
     stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
-    return stripped.lower().replace(".", "").replace(",", "")
+    flattened = stripped.lower().replace(".", "").replace(",", "")
+    return _NUMBER_PATTERN.sub(lambda m: _NUMBER_WORDS[m.group(1)], flattened)
 
 
 @dataclass
@@ -212,9 +250,17 @@ def _report(outcomes: list[Outcome]) -> dict[str, Any]:
 async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit", type=int, help="run only the first N questions")
+    parser.add_argument(
+        "--set",
+        default=str(DEFAULT_SET),
+        help="question file to run (default: the golden set; eval/holdout_set.yaml is the "
+        "validation set that no threshold was chosen against)",
+    )
     args = parser.parse_args()
 
-    cases = yaml.safe_load(GOLDEN_SET.read_text(encoding="utf-8"))
+    questions = Path(args.set)
+    results_path = EVAL_DIR / f"{questions.stem.replace('_set', '')}_results.json"
+    cases = yaml.safe_load(questions.read_text(encoding="utf-8"))
     if args.limit:
         cases = cases[: args.limit]
 
@@ -231,8 +277,8 @@ async def main() -> None:
         await clients.aclose()
 
     summary = _report(outcomes)
-    RESULTS.parent.mkdir(parents=True, exist_ok=True)
-    RESULTS.write_text(
+    results_path.parent.mkdir(parents=True, exist_ok=True)
+    results_path.write_text(
         json.dumps(
             {"summary": summary, "questions": [vars(o) for o in outcomes]},
             ensure_ascii=False,
@@ -241,7 +287,7 @@ async def main() -> None:
         ),
         encoding="utf-8",
     )
-    print(f"\ndetalhe por pergunta em {RESULTS.relative_to(ROOT)}")
+    print(f"\ndetalhe por pergunta em {results_path.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

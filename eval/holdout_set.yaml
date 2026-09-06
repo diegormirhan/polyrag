@@ -1,0 +1,229 @@
+# Held-out validation set — 40 questions, same demo/ corpus, same schema as
+# golden_set.yaml.
+#
+# WHY THIS FILE EXISTS
+#
+# The fixes to routing and graph seeding were chosen by looking at which
+# questions in golden_set.yaml failed. That makes golden_set.yaml a training
+# set: a score on it after tuning against it measures fit, not capability.
+#
+# These 40 questions were written afterwards, straight from the six source
+# documents, and were NOT looked at while any threshold, anchor or algorithm was
+# chosen. A score here that matches the score there is evidence the changes
+# generalise; a gap between them is evidence of overfitting. Either result is
+# worth having, which is the point of keeping the two files separate.
+#
+# Deliberately different in shape from the golden set, to cover scenarios it
+# does not: boundary values on the approval thresholds, single-hop lookups next
+# to two-hop chains, negative questions ("can these be anonymised?"), questions
+# about dates and frequencies, and prose questions phrased as instructions
+# rather than as questions.
+#
+# One rule was applied while writing: no question whose answer lives in two
+# stores at once. "How many regions does the company operate in" is such a
+# question — the prose says five and `SELECT COUNT(DISTINCT regiao)` also says
+# five — and a question two routes can both answer correctly cannot measure
+# routing. It stays in the golden set, where it is documented; it is not
+# repeated here.
+#
+# Relational figures were computed from the table, not recalled.
+
+# --------------------------------------------------------------------------- #
+# relational — aggregation, filtering, ordering, boundaries
+# --------------------------------------------------------------------------- #
+
+- question: Qual foi a receita total da regiao Sul?
+  route: relational
+  facts: ["2.218.700"]
+
+- question: Qual a receita total da regiao Centro-Oeste?
+  route: relational
+  facts: ["1.827.450"]
+
+- question: Qual foi o faturamento do mes de janeiro?
+  route: relational
+  facts: ["3.056.200"]
+
+- question: Qual foi a receita de fevereiro?
+  route: relational
+  facts: ["3.146.600"]
+
+- question: Qual a receita total do produto Armazenagem?
+  route: relational
+  facts: ["4.516.800"]
+
+- question: Quantas unidades foram vendidas na regiao Sudeste?
+  route: relational
+  facts: ["2.474"]
+
+- question: Quantas unidades a regiao Norte movimentou?
+  route: relational
+  facts: ["710"]
+
+- question: Qual foi a receita da regiao Sul em janeiro?
+  route: relational
+  facts: ["537.400"]
+
+- question: Qual mes teve o maior faturamento?
+  route: relational
+  facts: ["abril"]
+
+- question: Qual mes teve o menor faturamento?
+  route: relational
+  facts: ["janeiro"]
+
+- question: Qual produto gerou menos receita no total?
+  route: relational
+  facts: ["Armazenagem"]
+
+- question: Qual regiao vendeu menos unidades?
+  route: relational
+  facts: ["Norte"]
+
+# --------------------------------------------------------------------------- #
+# vectorial — narrative and guidance, including instruction-shaped prompts
+# --------------------------------------------------------------------------- #
+
+- question: Com quantos caminhoes a empresa comecou?
+  route: vectorial
+  relevant: ["nasceu em 2011"]
+  facts: ["dois caminhoes"]
+
+- question: Que tipo de cliente fechou o primeiro contrato da empresa?
+  route: vectorial
+  relevant: ["nasceu em 2011"]
+  facts: ["farmacias"]
+
+- question: Qual era a formacao dos fundadores?
+  route: vectorial
+  relevant: ["engenheiros de producao"]
+  facts: ["engenheiros"]
+
+- question: O que cada caminhao recebeu quando a empresa investiu em rastreamento?
+  route: vectorial
+  relevant: ["investiu em rastreamento"]
+  facts: ["terminal"]
+
+- question: Quantos fusos operacionais a empresa passou a operar depois de 2018?
+  route: vectorial
+  relevant: ["centro de distribuicao de Recife"]
+  facts: ["dois fusos"]
+
+- question: Quanto tempo a reconciliacao mensal consumia antes do Sistema Atlas?
+  route: vectorial
+  relevant: ["centro de distribuicao de Recife"]
+  facts: ["uma semana"]
+
+- question: Como as decisoes operacionais sao tomadas na empresa?
+  route: vectorial
+  relevant: ["decisoes operacionais"]
+  facts: ["executa"]
+
+- question: Descreva o que a empresa faz com um processo novo antes de escalar.
+  route: vectorial
+  relevant: ["laboratorio onde processos novos"]
+  facts: []
+
+- question: Explique o que o atendente deve dizer sobre a previsao de chegada da carga.
+  route: vectorial
+  relevant: ["previsao de chegada"]
+  facts: []
+
+- question: Qual a diferenca entre um atraso comunicado e um atraso descoberto?
+  route: vectorial
+  relevant: ["atraso comunicado"]
+  facts: ["confianca"]
+
+- question: Quais termos internos o atendente nao deve usar com o cliente?
+  route: vectorial
+  relevant: ["jargao interno"]
+  facts: ["romaneio"]
+
+- question: O que fazer com uma reclamacao quando o cliente esta errado sobre a causa?
+  route: vectorial
+  relevant: ["reclamacao e informacao de graca"]
+  facts: ["registre"]
+
+# --------------------------------------------------------------------------- #
+# graph — thresholds at their boundaries, obligations, and dependency chains
+# --------------------------------------------------------------------------- #
+
+- question: Quem precisa aprovar uma compra de setenta mil reais?
+  route: graph
+  relevant: ["Politica PC-04"]
+  facts: ["Diretoria Financeira"]
+
+- question: Uma compra de quinze mil reais pode ser aprovada por quem?
+  route: graph
+  relevant: ["Politica PC-04"]
+  facts: ["Gerente de Suprimentos"]
+
+- question: Uma compra de cinco mil reais exige aprovacao formal?
+  route: graph
+  relevant: ["Politica PC-04"]
+  facts: []
+
+- question: Por que a Politica PC-09 foi criada?
+  route: graph
+  relevant: ["Politica PC-09"]
+  facts: ["faturamento duplicado"]
+
+- question: Um pedido processado pelo Sistema Atlas precisa de quantas aprovacoes antes do faturamento?
+  route: graph
+  relevant: ["Politica PC-09", "Sistema Atlas processa"]
+  facts: ["dupla"]
+
+- question: Qual politica o Contrato Marco 2026 segue integralmente?
+  route: graph
+  relevant: ["Contratos marco"]
+  facts: ["PC-04"]
+
+- question: Qual certificacao um fornecedor precisa ter para ser homologado?
+  route: graph
+  relevant: ["Homologacao de fornecedores"]
+  facts: ["ISO 9001"]
+
+- question: O que acontece quando um fornecedor perde a certificacao?
+  route: graph
+  relevant: ["Homologacao de fornecedores"]
+  facts: ["Comite de Riscos"]
+
+- question: Qual o prazo maximo de retencao que a Norma NC-11 determina?
+  route: graph
+  relevant: ["Norma NC-11"]
+  facts: ["vinte e quatro"]
+
+- question: Registros financeiros podem ser anonimizados?
+  route: graph
+  relevant: ["Norma NC-14"]
+  facts: []
+
+- question: Com que frequencia a conformidade com a Norma NC-11 e auditada?
+  route: graph
+  relevant: ["Auditoria"]
+  facts: ["trimestre"]
+
+- question: Em quanto tempo um incidente grave precisa ser reportado?
+  route: graph
+  relevant: ["Auditoria"]
+  facts: ["vinte e quatro horas"]
+
+- question: Que tipo de dado o Sistema Atlas armazena?
+  route: graph
+  relevant: ["Sistema Atlas"]
+  facts: ["dados pessoais"]
+
+- question: Para qual banco o Banco de Dados Orion replica?
+  route: graph
+  relevant: ["Banco de Dados Orion"]
+  facts: ["Vesta"]
+
+- question: Com que frequencia o Banco de Dados Orion replica?
+  route: graph
+  relevant: ["Banco de Dados Orion"]
+  facts: ["seis horas"]
+
+- question: Se o Gateway Iris falhar, qual sistema para de funcionar?
+  route: graph
+  relevant: ["Sistema Helios"]
+  facts: ["Helios"]
