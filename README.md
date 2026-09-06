@@ -57,7 +57,7 @@ flowchart TB
 
     subgraph router["Semantic router — one engine, both directions"]
         s1["1 · heuristic<br/>tabularity score"] --> s2["2 · cosine + margin<br/>against config anchors"]
-        s2 -->|gray zone only| s3["3 · model tiebreak"]
+        s2 -->|gray zone only| s3["3 · store evidence<br/>section headings each store holds"]
     end
 
     chunk --> router
@@ -67,11 +67,11 @@ flowchart TB
 
     router --> sql[("RAG 1 · SQLite<br/>Text-to-SQL")]
     router --> vec[("RAG 2 · Qdrant<br/>HNSW")]
-    router --> graph[("RAG 3 · networkx<br/>Personalized PageRank")]
+    router --> kg[("RAG 3 · networkx<br/>Personalized PageRank")]
 
     sql --> llm["Qwen3.5-4B<br/>writes the answer"]
     vec --> llm
-    graph --> llm
+    kg --> llm
 
     llm --> ui["SvelteKit<br/>chat + live pipeline panel"]
     router -.spans.-> otel["OpenTelemetry"]
@@ -79,7 +79,8 @@ flowchart TB
 ```
 
 Three models served by `llama.cpp` over Vulkan, each on its own port, all speaking the OpenAI API:
-**Qwen3.5-4B** (reasoning, SQL, entity extraction, answers, route tiebreaks), **GLM-OCR** (images),
+**Qwen3.5-4B** (SQL, triple extraction on ingest, and the answer — nothing in the router),
+**GLM-OCR** (images),
 **BGE-M3** (embeddings). Qdrant runs standalone alongside them. OCR sleeps when idle and hands its
 VRAM back, so the resident set is about 5.6 GB.
 
