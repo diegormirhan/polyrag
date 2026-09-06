@@ -127,15 +127,27 @@ testable rather than hidden behind an import.
 
 ## What is measured
 
-Numbers from this machine (RX 9060 XT, 16 GB), not estimates:
+`uv run python scripts/benchmark.py` on this machine (RX 9060 XT, 16 GB), 12 measured runs per
+question after 2 discarded warm-ups. A single number cannot describe a latency — the first call
+after a model loads pays for a cold cache, and the tail is what a user notices — so every row is
+p50 and p95 rather than an average.
 
-| | |
-|---|---|
-| Routing decision (deterministic stage) | **8–13 ms** |
-| Routing decision on the wire, streaming | **23 ms** |
-| Time to first token | **639 ms** |
-| Cache hit, including a paraphrase | **8 ms** |
-| Share of a request spent on model calls | **~79 %** |
+| | p50 | p95 |
+|---|---:|---:|
+| Routing decision (deterministic stage) | **9.5 ms** | 10.7 ms |
+| Routing decision on the wire, streaming | **41 ms** | 45 ms |
+| Time to first token | **378 ms** | 431 ms |
+| Full answer, relational | **764 ms** | 994 ms |
+| Full answer, graph | **929 ms** | 945 ms |
+| Full answer, vectorial | **1002 ms** | 1025 ms |
+| Cache hit, same question | **12 ms** | 16 ms |
+| Share of a request spent inside model calls | **99 %** | |
+
+Per stage, from each request's own spans rather than a second set of timers: `pipeline.router`
+9.5 ms, `rag.relational.generate_sql` 390 ms, `rag.graph.seeds` 247 ms, `rag.graph.pagerank`
+1.0 ms, `rag.vectorial.search` 4.1 ms. Two of those are worth reading together: **PageRank, the
+algorithm the graph route is named for, costs 1 ms — and finding the entities to seed it costs
+247**, because entity vectors are recomputed on every query instead of at ingestion.
 
 Two changes worth their own line, because both were found by instrumenting rather than guessing:
 
@@ -254,18 +266,30 @@ two documents that never mention each other.
 
 **The cache.** A question's embedding is compared against every cached question with FAISS
 `IndexFlatIP` — exact brute force by inner product, which is again cosine because the vectors are
-normalised. Above the threshold, the stored answer is returned in about 8 ms.
+normalised. Above the threshold, the stored answer is returned in about 12 ms. The threshold is
+also the cache's open defect: see the limitations below.
 
 **Why this matters here.** These steps are pure functions over numbers, which is what makes them
 testable without a model server, reproducible across runs, and explainable after the fact. The
-router's decision is 8–13 ms of arithmetic whose inputs the panel can show you. That is the whole
-argument.
+router's decision is under 11 ms of arithmetic whose inputs the panel can show you. That is the
+whole argument.
 
 ---
 
 ## Running it
 
 Needs Python 3.12, Node 22, and roughly 6 GB of VRAM.
+
+One command does the whole install — it installs uv if missing, syncs the locked dependencies,
+downloads the binaries and models, checks that Vulkan sees the GPU, and runs the tests. Every step
+checks whether its work is already done, so re-running is safe:
+
+```powershell
+.\setup.ps1
+```
+
+`-SkipModels` leaves out the 4.9 GB download, `-SkipFrontend` skips npm, and `-Start` launches the
+servers and the API when it finishes. Or do the same steps by hand:
 
 ```bash
 # 1 · dependencies
@@ -284,6 +308,10 @@ uv run uvicorn --app-dir backend app.main:app --port 8000
 # 5 · the interface
 npm --prefix frontend run dev
 ```
+
+The servers run windowless and log to `data/run/<name>.log`. Stop them with
+`scripts/start_servers.py --stop`, or start and stop them individually from the **Servers** tab in
+the interface — useful on a 16 GB card when something else needs the GPU.
 
 Then open <http://localhost:5173>, or <http://localhost:8000/docs> for the API.
 
@@ -323,6 +351,7 @@ their results; pytest collects nothing from them.
 
 ```bash
 uv run python scripts/evaluate.py    # the golden set, needs the servers and demo corpus
+uv run python scripts/benchmark.py   # latency p50/p95, same requirements
 ```
 
 ---
@@ -346,7 +375,7 @@ npm --prefix frontend run dev
 Then ask, in order: a figure (`Qual foi a receita total da regiao Sudeste?`), something narrative
 (`O que motivou a criacao do Sistema Atlas?`), a chain that crosses two files (`Os pedidos
 processados pelo Sistema Atlas seguem qual politica de aprovacao?`), and finally any of them a
-second time to watch the cache answer in 8 ms. [`demo/README.md`](demo/README.md) has the full
+second time to watch the cache answer in 12 ms. [`demo/README.md`](demo/README.md) has the full
 script, the expected figures, and the two questions that fail.
 
 ---
@@ -355,6 +384,13 @@ script, the expected figures, and the two questions that fail.
 
 Stated because they are real, not because they are theoretical:
 
+- **The semantic cache can serve the wrong answer.** Measured, not theoretical: ask for the
+  Sudeste revenue, then ask for the Nordeste revenue, and the second question is answered from
+  cache with the first one's figure. The two questions differ by one word in a long sentence, so
+  they score 0.917 against each other — above the 0.80 threshold. Raising the threshold does not
+  fix it: legitimate paraphrases of the same question score 0.771 to 0.911, so the ranges overlap
+  and no single cutoff separates them. `scripts/benchmark.py` reports cache hits and misses
+  separately so this stays visible.
 - **Graph search returns nothing when it recognises no entity in the question.** 39% of golden-set
   queries retrieved an empty list. Conditioned on retrieving anything, recall@5 is 94% and MRR 0.85
   — so this is coverage, not ranking, and a reranker would fix none of it. Highest-impact open item.
