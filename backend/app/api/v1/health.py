@@ -46,7 +46,6 @@ async def health(settings: Settings = Depends(get_settings)) -> HealthResponse:
                     ("llm", llama.llm),
                     ("ocr", llama.ocr),
                     ("embeddings", llama.embeddings),
-                    ("judge", llama.judge),
                 )
             ),
             _probe_qdrant(client, settings.qdrant.host, settings.qdrant.port),

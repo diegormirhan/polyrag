@@ -19,14 +19,13 @@ def _client(host: str, port: int) -> AsyncOpenAI:
 
 
 class LlamaClients:
-    """One AsyncOpenAI client per llama-server instance (llm, ocr, embeddings, judge)."""
+    """One AsyncOpenAI client per llama-server instance (llm, ocr, embeddings)."""
 
     def __init__(self, settings: Settings | None = None) -> None:
         settings = settings or load_config()
         self.llm = _client(settings.llama.llm.host, settings.llama.llm.port)
         self.ocr = _client(settings.llama.ocr.host, settings.llama.ocr.port)
         self.embeddings = _client(settings.llama.embeddings.host, settings.llama.embeddings.port)
-        self.judge = _client(settings.llama.judge.host, settings.llama.judge.port)
 
     async def aclose(self) -> None:
         """Releases the HTTP pools.
@@ -35,7 +34,7 @@ class LlamaClients:
         surfaces as httpcore async-generator tracebacks that look like failures
         and are not.
         """
-        for client in (self.llm, self.ocr, self.embeddings, self.judge):
+        for client in (self.llm, self.ocr, self.embeddings):
             await client.close()
 
 

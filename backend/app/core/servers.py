@@ -91,13 +91,6 @@ def services(settings: Settings) -> list[Service]:
             ["--mmproj", str(llama.ocr.mmproj_path), *_sleep_flag(llama.ocr)],
         ),
         _llama(settings, "embeddings", "BGE-M3", llama.embeddings, ["--embedding"]),
-        # The judge shares the llm's port, so it is the llm — nothing extra to start.
-        # A judge configured on its own port would get its own server again.
-        *(
-            [_llama(settings, "judge", "judge", llama.judge, _sleep_flag(llama.judge))]
-            if llama.judge.port != llama.llm.port
-            else []
-        ),
         Service(
             name="qdrant",
             label="Qdrant",
