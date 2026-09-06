@@ -29,8 +29,21 @@ class ChatResult:
 def _format_context(route: str, results: list[Any]) -> str:
     # SQL rows are dicts of columns; the other two RAGs return chunks of text.
     if route == "relational":
-        return pd.DataFrame(results).to_markdown(index=False)
+        sql = next((row["sql"] for row in results if "sql" in row), None)
+        rows = [row for row in results if "sql" not in row]
+        # The query is part of the context, not decoration: one row is meaningless
+        # without the ORDER BY that selected it. Measured, `ORDER BY receita ASC
+        # LIMIT 1` returned the right row and the model answered "only a list of
+        # regions, impossible to determine".
+        table = pd.DataFrame(rows).to_markdown(index=False)
+        return f"Consulta SQL executada:\n{sql}\n\nResultado:\n{table}"
     return "\n\n".join(item["text"] for item in results)
+
+
+# Where a question goes when the store the router chose has nothing for it.
+# The vector store is the only one that can hold arbitrary text, which is why
+# it is also the ingestor's fallback.
+FALLBACK_ROUTE = "vectorial"
 
 
 class Orchestrator:
@@ -57,7 +70,7 @@ class Orchestrator:
         # A disabled cache is simply no cache: one source of truth, instead of an
         # `enabled` flag checked again at every call site.
         cache = SemanticCache(settings) if settings.cache.enabled else None
-        router = await Router.create(clients, settings)
+        router = await Router.create(clients, settings, rags)
         return cls(clients, router, cache, rags, settings)
 
     def clear_cache(self) -> None:
@@ -124,11 +137,26 @@ class Orchestrator:
             # RAG is still working — the wait becomes the product.
             yield {"type": "decision", "decision": decision}
 
-            with _tracer.start_as_current_span(f"pipeline.rag.{decision.route}") as span:
-                results = await self._rags[decision.route].query(
-                    question, top_k=self._settings.orchestrator.top_k
-                )
+            route = decision.route
+            top_k = self._settings.orchestrator.top_k
+            with _tracer.start_as_current_span(f"pipeline.rag.{route}") as span:
+                results = await self._rags[route].query(question, top_k=top_k)
                 span.set_attribute("rag.results", len(results))
+
+            # A store that finds nothing hands the question over instead of giving
+            # up. The same fallback the ingestor uses, for the same reason: the
+            # router judges what a question means, and can be wrong about which
+            # store holds the answer. Measured on the held-out set, a misrouted
+            # question was answered with "nao encontrei nada" while the passage sat
+            # in the vector store. Deterministic and bounded -- one extra lookup,
+            # only when the first returned nothing, and never a loop back.
+            if not results and route != FALLBACK_ROUTE:
+                with _tracer.start_as_current_span(f"pipeline.rag.{FALLBACK_ROUTE}") as span:
+                    results = await self._rags[FALLBACK_ROUTE].query(question, top_k=top_k)
+                    span.set_attributes({"rag.results": len(results), "rag.fallback_from": route})
+                if results:
+                    route = FALLBACK_ROUTE
+
             yield {"type": "sources", "sources": results}
 
             if not results:
@@ -137,7 +165,7 @@ class Orchestrator:
                 return
 
             prompt = self._settings.orchestrator.answer_prompt.format(
-                context=_format_context(decision.route, results),
+                context=_format_context(route, results),
                 question=question,
             )
             answer = ""

@@ -40,8 +40,10 @@ async def lifespan(app: FastAPI):
     # the graph in memory, so separate copies would hide everything the ingestor
     # writes from everything the search reads.
     clients = LlamaClients(settings)
-    router = await Router.create(clients, settings)
+    # The stores are built first because the router asks each of them what it
+    # holds, and folds those descriptions into its anchors.
     rags = await build_rags(clients, settings)
+    router = await Router.create(clients, settings, rags)
     cache = SemanticCache(settings) if settings.cache.enabled else None
 
     app.state.orchestrator = Orchestrator(clients, router, cache, rags, settings)

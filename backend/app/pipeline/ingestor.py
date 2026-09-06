@@ -77,8 +77,8 @@ class Ingestor:
     @classmethod
     async def create(cls, clients: LlamaClients, settings: Settings | None = None) -> Ingestor:
         settings = settings or load_config()
-        router = await Router.create(clients, settings)
-        return cls(clients, router, await build_rags(clients, settings), settings)
+        rags = await build_rags(clients, settings)
+        return cls(clients, await Router.create(clients, settings, rags), rags, settings)
 
     async def ingest_pending(self) -> list[IngestReport]:
         """One pass over data_drop/. The infinite watch loop belongs to the caller."""
@@ -150,6 +150,17 @@ class Ingestor:
             # threshold, so the heuristic was not the one that let it through.
             # SQLite needs real rows and columns, so a chunk holding no table is
             # kept as free text.
+            route = "vectorial"
+
+        if route == "graph":
+            # Same shape of fallback, for the same reason: the router judges meaning
+            # and the store has a structural requirement the text may not meet. Text
+            # with no extractable relation is not graph material. Before this,
+            # GraphRAG.ingest returned quietly and the chunk landed in no store at
+            # all -- 4 of the 14 chunks routed here on the demo corpus were
+            # retrievable by nothing afterwards.
+            if await self._rags[route].ingest(chunk):
+                return route
             route = "vectorial"
 
         await self._rags[route].ingest(chunk)
