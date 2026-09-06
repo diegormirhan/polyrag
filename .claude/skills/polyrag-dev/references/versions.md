@@ -29,7 +29,7 @@ the linked documentation and keep the pinned versions.
 |---|---|---|---|
 | llama.cpp (Vulkan) | **b10453** | `llama-b10453-bin-win-vulkan-x64.zip` | — |
 | Qdrant standalone | **v1.19.0** | `qdrant-x86_64-pc-windows-msvc.zip` | — |
-| Qwen3-14B | Q4_K_M | `Qwen3-14B-Q4_K_M.gguf` (~9.5GB) | ~9.5GB |
+| Qwen3.5-4B | Q4_K_M | `Qwen3.5-4B-Q4_K_M.gguf` (~9.5GB) | ~9.5GB |
 | GLM-OCR | Q8_0 | `GLM-OCR-Q8_0.gguf` (0.89GB) + `mmproj-GLM-OCR-Q8_0.gguf` (0.45GB) | ~2.3GB |
 | BGE-M3 | Q8_0 | `bge-m3-Q8_0.gguf` (~0.6GB) | ~0.6GB |
 
@@ -39,7 +39,7 @@ an optional optimization for weaker machines, not a requirement.
 ### Download commands
 
 ```powershell
-hf download Qwen/Qwen3-14B-GGUF Qwen3-14B-Q4_K_M.gguf --local-dir models
+hf download Qwen/Qwen3.5-4B-GGUF Qwen3.5-4B-Q4_K_M.gguf --local-dir models
 hf download ggml-org/GLM-OCR-GGUF GLM-OCR-Q8_0.gguf mmproj-GLM-OCR-Q8_0.gguf --local-dir models
 hf download gpustack/bge-m3-GGUF bge-m3-Q8_0.gguf --local-dir models
 ```

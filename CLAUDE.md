@@ -54,7 +54,7 @@ O núcleo do projeto **não** é "usar mais IA em tudo". É o oposto: **usar mat
 | Roteamento semântico (qual RAG?) | **Cosseno + margem** (aritmética pura: mesmo input → mesmo output, bit a bit) | ✅ **Sim, 100%** |
 | Cache semântico (hit/miss?) | **Threshold matemático** (cosseno ≥ 0.80) | ✅ **Sim, 100%** |
 | Rankear chunks no grafo | **Personalized PageRank** (algoritmo determinístico de álgebra linear) | ✅ **Sim, 100%** |
-| Desempatar rota na zona cinzenta | **LLM-as-judge** (limitado e auditado) | ⚠️ IA, restrita ao mínimo |
+| Desempatar rota na zona cinzenta | **Cabeçalhos que cada base declara ter** (cosseno) | ✅ **Sim, 100%** |
 | Gerar a resposta final | **LLM** (temperatura fixa e baixa) | ⚠️ IA, única parte "criativa" |
 
 **Consequências práticas (o que você vende):**
@@ -182,12 +182,17 @@ O núcleo do projeto **não** é "usar mais IA em tudo". É o oposto: **usar mat
 > **O juiz dedicado saiu (Dia 5b).** Ele existiu porque um modelo especializado em avaliação
 > deveria julgar melhor que um modelo geral. A medição do Dia 4 mostrou o contrário: o Prometheus 2
 > melhorou **0** decisões de rota e **corrompeu 1**. E a literatura só sustenta juízes dedicados a
-> partir de ~14B, o que não cabe aqui. O Estágio 3 agora aponta pro modelo principal — custo **0GB**,
-> um processo a menos, e o Estágio 3 continua existindo pro Dia 11 medir.
+> partir de ~14B, o que não cabe aqui.
+>
+> **E o Estágio 3 deixou de chamar modelo nenhum.** Medido: na zona cinzenta, o Estágio 2 sozinho
+> acerta 9/10 e o juiz 8/10 — ele concorda com a geometria em 9 dos 10 casos (duas chamadas de
+> modelo pra repetir o que a aritmética já disse) e, na única vez que discorda, erra. Trocado por
+> cosseno contra os cabeçalhos de seção que cada base declara guardar. Os **três estágios do
+> roteador agora são aritmética**.
 
 | Modelo | Analogia | O que faz |
 |---|---|---|
-| **Qwen3.5-4B** (Q4_K_M, ~2.9GB VRAM) | O **cérebro raciocinador** | Traduz pergunta → SQL, extrai entidades/relações dos textos (NER), escreve as respostas finais, e desempata rota no Estágio 3 |
+| **Qwen3.5-4B** (Q4_K_M, ~2.9GB VRAM) | O **cérebro raciocinador** | Traduz pergunta → SQL, extrai triplas dos textos na ingestão (OpenIE) e escreve as respostas finais. **Não participa mais do roteamento** nem da busca no grafo — as duas etapas viraram aritmética. |
 | **GLM-OCR** (Q8_0 + mmproj Q8_0, ~2.3GB VRAM) | Os **olhos** | Modelo especializado em OCR: lê foto de tabela/documento escaneado e devolve o texto (incluindo tabelas em Markdown) |
 | **BGE-M3** (~0.6GB VRAM) | O **tradutor de significados** | Converte qualquer texto num vetor de 1024 números (o "GPS semântico"). Multilingue — funciona em PT-BR |
 
@@ -274,13 +279,13 @@ margem = score_top1 − score_top2
 ```
 
 - Margem **grande** → decisão clara ("vendas no trimestre" → relational com folga).
-- Margem **pequena** → dúvida legítima → chamamos o **LLM juiz** para desempatar (Passo 3).
+- Margem **pequena** → dúvida legítima → o Estágio 3 pergunta às bases quais seções elas guardam.
 
 **Regra de decisão (calibrável no `config.yaml`):**
 ```
 SE score_top1 ≥ 0.45  E  margem ≥ 0.08  → rota top1 (confiante)
 SE score_top1 < 0.35                     → fallback: vectorial
-SENÃO                                    → zona cinzenta → LLM juiz
+SENÃO                                    → zona cinzenta → cabeçalhos das bases
 ```
 
 Isso é um **classificador por vizinho mais próximo (1-NN)** com regra de rejeição — conceito clássico de ML, ótimo para explicar em entrevista.
@@ -391,7 +396,7 @@ Inspirado conceitualmente na lib `semantic-router` (https://semantic-router.read
 5. **Decide:**
    - `top1 ≥ tau_high (0.45)` **e** `margem ≥ delta (0.08)` → vai para `top1` ✅ (geométrico, custo ~0)
    - `top1 < tau_low (0.35)` → fallback `vectorial`
-   - **senão (zona cinzenta)** → **LLM-as-judge**: o modelo principal lê o chunk + as descrições das rotas e escolhe (custa 2 chamadas de LLM — roda com a ordem das rotas invertida pra checar viés de posição)
+   - **senão (zona cinzenta)** → **evidência das bases**: cada base devolve os cabeçalhos de seção que guarda (`RAGBase.content_anchors`) e o cosseno decide contra eles. Custo: 0 chamadas de LLM. Substituiu o LLM-as-judge, que foi medido 3 vezes e nunca compensou — ver seção 11.
 6. **Grava** o chunk na base da rota escolhida. Tudo registrado no span: `router.route`, `router.score_top1`, `router.score_top2`, `router.margin`, `router.decision_stage`.
 
 > **O mesmo componente serve os dois momentos:** na **ingestão** o input é o *conteúdo do chunk* ("onde guardo?"); na **busca** o input é a *pergunta do usuário* ("onde procuro?"). Mesmas âncoras, mesma matemática, uma engine só. É por isso que as frases-âncora do `config.yaml` são tão importantes: elas *treinam* o roteador sem escrever código.
@@ -410,7 +415,7 @@ Algumas perguntas exigem dados de mais de uma base:
 
 1. **Detectar que é composta** (regra matemática, mesmo princípio da margem):
    - Se `top2 ≥ tau_multi` (novo threshold no config, ex: **0.5**) → ativa **fan-out** (consulta as top-N rotas).
-   - Na zona cinzenta, o LLM-as-judge responde **"quais rotas"** (lista JSON), não "qual rota".
+   - Na zona cinzenta, a evidência das bases devolveria **"quais rotas"**, não "qual rota".
 2. **Fan-out em paralelo:** `asyncio.gather` consulta as N rotas selecionadas; cada RAG retorna seus top-k com scores.
 3. **Fusão por Reciprocal Rank Fusion (RRF)** — matemática clássica de IR, **determinística** e que ignora a escala de cada base:
 
@@ -446,7 +451,7 @@ answer_correctness    = resposta gerada vs resposta esperada (ver rubric abaixo)
 
 **O golden set é dividido por domínio para você ver recall por RAG:**
 - **RAG 1 (SQL):** resposta esperada é um **valor exato** ("total de março = 4.523"). Como a resposta vem da execução do SQL, `answer_correctness` aqui é **determinística** — se o Text-to-SQL acertou a query, acertou o número. Atinge valores altos (90%+).
-- **RAG 2 (vetorial):** resposta "certa" é texto livre → `answer_correctness` via **LLM-as-judge com rubrica** (0/1: a resposta contém a informação do gold?) + cosseno contra a resposta esperada como apoio.
+- **RAG 2 (vetorial):** resposta "certa" é texto livre. **O que foi implementado não é o LLM-as-judge descrito abaixo:** o `scripts/evaluate.py` checa substrings de fatos (números e nomes próprios — o que um modelo não pode reescrever legitimamente), normalizando maiúsculas, acentos, separadores de milhar e numerais por extenso. Rubrica por LLM precisaria de um modelo julgando outro, e este projeto já mediu que modelo pequeno é juiz não confiável.
 - **RAG 3 (grafo/multi-hop):** além do recall@k, checar se a **cadeia de entidades** (A→B→C) apareceu na resposta.
 
 **Exportação para OTel:** o benchmark roda num serviço próprio (`service.name = polyrag-eval`) e cada rodada emite spans:
@@ -635,7 +640,7 @@ Adicionar uma rota nova é escrever mais um bloco desses. Nenhuma linha de Pytho
 | Dia | Missão | Entregável | Matemática/conceito do dia |
 |---|---|---|---|
 | **1** | **Ingestão de conteúdo** — o arquivo chega na `data_drop` | watcher detecta o arquivo; separa imagens de textos/planilhas; **GLM-OCR** extrai o texto das imagens; chunking | — (orquestração + OCR) |
-| **2** | **Roteador de ingestão** — decidir onde guardar | heurística (é tabular?) + engine de cosseno/margem + LLM-as-judge na zona cinzenta; chunk cai na rota certa com span de decisão | **cosseno, norma L2, margem** (4.2–4.4) |
+| **2** | **Roteador de ingestão** — decidir onde guardar | heurística (é tabular?) + engine de cosseno/margem + evidência das bases na zona cinzenta; chunk cai na rota certa com span de decisão | **cosseno, norma L2, margem** (4.2–4.4) |
 | **3** | **As 3 bases (RAGs)** — onde guardar e buscar | RAG1 Text-to-SQL (SQLite, validação read-only); RAG2 Qdrant (HNSW); RAG3 grafo (NER + `personalized_pagerank`) | álgebra relacional; **HNSW** (4.5); **PageRank** (4.6) |
 | **4** | **Caminho de busca** — responder | roteador de busca (mesma engine do Dia 2); CAG (cache FAISS em RAM, hit/miss); Qwen3.5-4B como LLM de resposta; orquestrador completo (Cache→Router→RAG→LLM) | reuso de 4.3/4.4 no caminho de query |
 | **5** | **API + Frontend** | rotas finais `/api/v1/`, WebSockets; chat com streaming + painel de observabilidade ao vivo (spans OTel) | — (integração) |
@@ -718,7 +723,7 @@ justifique**, seguindo o princípio de simplicidade (seção 0.0.1).
 |---|---|
 | OCR (GLM-OCR Q8_0) falhar em tabelas muito complexas | subir p/ `GLM-OCR-f16.gguf` (1.66GB, sem quantização) — ainda leve, só config |
 | Apertar VRAM em pico de contexto (ctx 16384 do LLM) | reduzir `ctx_size` do LLM p/ 12288 no config; ou ativar o modo OCR sob demanda |
-| Juiz LLM lento | `llm_judge_enabled: false` no config; threshold conservador |
+| ~~Juiz LLM lento~~ **REMOVIDO** | O Estágio 3 não chama modelo nenhum desde a medição: na zona cinzenta o Estágio 2 sozinho acertava 9/10 e o juiz 8/10, concordando com a geometria em 9 dos 10 casos. Trocado por cosseno contra os cabeçalhos das bases: roteamento em perguntas inéditas foi de 82% → 95%. |
 | Escorregar o Dia 4 (o mais denso) | Dia 7 é folga planejada exatamente para isso |
 | Versões novas quebrarem algo | tudo pinado no `uv.lock`; docs linkadas na seção 1 |
 | `loaders.py` extrai só texto corrido de PDF/DOCX/PPTX, ignorando imagens e tabelas embutidas dentro do arquivo | Desmontar o documento em sub-elementos (texto/imagem/tabela) e rotear cada um pro tratamento certo (imagem → `ocr.py`, tabela → DataFrame → RAG 1) — ver Dia 8+ (hardening) |

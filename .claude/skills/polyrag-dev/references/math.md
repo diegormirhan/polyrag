@@ -46,12 +46,17 @@ margin = top1 − top2
 Decision rules (from `config.yaml`):
 
 ```
-top1 ≥ tau_high (0.62) AND margin ≥ delta_margin (0.08)  → route top1 (confident)
+top1 ≥ tau_high (0.45) AND margin ≥ delta_margin (0.08)  → route top1 (confident)
 top1 < tau_low (0.35)                                    → fallback → vectorial
-otherwise                                                → gray zone → LLM-as-judge
+otherwise                                                → gray zone → content evidence
 ```
 
 This is a **1-NN classifier with a rejection rule** — a classic ML concept, good to cite.
+
+The gray zone does NOT call a model. It re-scores the question against the section headings each
+store declares (`RAGBase.content_anchors`) and takes the max per route against the configured
+anchors. Measured: the LLM judge that used to live here scored 8/10 where geometry alone scored
+9/10; the headings took routing on unseen questions from 82% to 95%.
 
 ## FAISS IndexFlatIP vs HNSW (Qdrant)
 
@@ -101,8 +106,8 @@ Models natively store weights as 16-bit floats (FP16). **Quantization** compress
 (Q4_K_M) — 4× less memory, minimal quality loss.
 
 ```
-Qwen3-14B FP16: 14B × 2 bytes ≈ 28 GB  → too big
-Qwen3-14B Q4:   14B × 0.5 byte ≈ 9 GB   → fits in 16GB
+A 14B model in FP16: 14B × 2 bytes ≈ 28 GB  → too big
+The same in Q4:   14B × 0.5 byte ≈ 9 GB   → fits in 16GB (this project runs a 4B: ~2.9GB)
 ```
 
 ## SQL as relational algebra (interview bonus)
@@ -129,8 +134,8 @@ example: chunk ranked #2 in SQL and #5 in graph
 ## Key constants
 
 - BGE-M3 embedding dimension: **1024**
-- Default thresholds: `tau_high = 0.62`, `tau_low = 0.35`, `delta_margin = 0.08`,
+- Default thresholds: `tau_high = 0.45`, `tau_low = 0.35`, `delta_margin = 0.08`,
   `tau_multi = 0.5` (if top2 ≥ tau_multi → fan-out to multiple routes)
-- CAG hit threshold: `cosine ≥ 0.92`
+- CAG hit threshold: `cosine ≥ 0.80`
 - Chunk size 512 tokens, overlap 64
 - RRF constant: `k = 60`

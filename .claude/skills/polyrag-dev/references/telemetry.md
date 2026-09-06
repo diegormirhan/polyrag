@@ -16,7 +16,7 @@
 |---|---|---|
 | `pipeline.ingest` | a file is processed in data_drop | `ingest.file`, `ingest.file_type`, `ingest.ocr_used` |
 | `pipeline.ocr` | image → text via GLM-OCR | `ocr.model`, `ocr.chars`, `ocr.latency_ms` |
-| `pipeline.router` | routing a chunk or a question | `router.route`, `router.score_top1`, `router.score_top2`, `router.margin`, `router.decision_stage` (`heuristic` \| `embedding` \| `llm_judge`), `router.llm_judge_used`, `router.routes` (list, when fan-out), `router.fan_out` (bool) |
+| `pipeline.router` | routing a chunk or a question | `router.route`, `router.score_top1`, `router.score_top2`, `router.margin`, `router.decision_stage` (`heuristic` \| `embedding` \| `content_evidence`), `router.score.<route>` (one per route) |
 | `pipeline.cache` | CAG lookup | `cache.hit` (bool), `cache.cosine`, `cache.entries` |
 | `pipeline.rag.<route>` | retrieval from the chosen base | `rag.engine` (`sqlite` \| `qdrant` \| `graph`), `rag.top_k`, `rag.scores`, `rag.entities` (graph) |
 | `pipeline.llm` | final generation | `llm.model`, `llm.prompt_tokens`, `llm.completion_tokens`, `llm.temperature` |
@@ -57,17 +57,17 @@ wrong answer?
 ```
 
 - `recall` = "was the right information in the context?" (math, high achievable)
-- `answer_correctness` = "did the right answer reach the user, even reworded?" (LLM rubric)
+- `answer_facts` = "did the right answer reach the user?" (substring over normalised text)
 
-### LLM-as-judge rubric (temperature 0, JSON output)
+### How answer correctness is actually measured
 
-```
-"You are an answer evaluator. Compare the GENERATED ANSWER with the EXPECTED ANSWER.
-Reply only JSON: {"correct": 0|1, "justification": "..."}
-- correct = 1 if the generated answer conveys the SAME information as the expected answer,
-  even if worded differently.
-- correct = 0 if essential information is missing or contradicted."
-```
+NOT with an LLM rubric. `scripts/evaluate.py` checks that the answer contains the figures and
+proper nouns it must contain (`facts` in the question sets) -- the parts a model cannot legitimately
+reword. Case, accents, thousands separators and number words are normalised on both sides, so
+"cinco" and "5" count as the same answer.
+
+Substring over rubric because the rubric needs a model to grade a model, and this project already
+measured that a small model is an unreliable judge.
 
 ### Realistic targets
 

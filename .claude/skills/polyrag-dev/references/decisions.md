@@ -15,7 +15,7 @@ Every decision below is deliberate. Do not reverse them without strong reason an
   `vllm==0.6.6.post1` (Linux/CUDA-only) plus hard pins (openai==1.91.1, pydantic==2.10.4) that break
   the whole environment. It cannot install on this stack.
 - **Decision:** implement the **HippoRAG 2 algorithm** (OSU-NLP, paper arXiv 2502.14802) ourselves:
-  NER/OpenIE triples via Qwen3-14B → `networkx.DiGraph` → `nx.personalized_pagerank`. This is a
+  NER/OpenIE triples via Qwen3.5-4B → `networkx.DiGraph` → `nx.personalized_pagerank`. This is a
   portfolio **plus**, not a workaround.
 
 ## 3. `semantic-router` library is BANNED — custom NumPy/FAISS engine

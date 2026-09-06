@@ -9,7 +9,7 @@ description: >-
   vectorial/Qdrant, graph/networkx — CAG FAISS cache, orchestrator, FastAPI /api/v1 routes,
   OpenTelemetry telemetry, SvelteKit frontend), writing evaluation scripts (recall@k, precision@k,
   router_accuracy, answer_correctness with golden sets), choosing models or library versions
-  (Qwen3-14B, GLM-OCR, BGE-M3 via llama.cpp), or explaining the math (cosine similarity, L2
+  (Qwen3.5-4B, GLM-OCR, BGE-M3 via llama.cpp), or explaining the math (cosine similarity, L2
   normalization, margin scoring, Personalized PageRank). Always consult this skill before writing
   or reviewing PolyRAG code so the architectural decisions, deterministic-design principle, pinned
   versions, and hard constraints are respected — even if the user does not explicitly say
@@ -36,7 +36,8 @@ for disambiguation and final answer generation only.
 5. All model inference goes through **`llama-server`** (OpenAI-compatible API). Never import a model
    directly into Python.
 6. **Determinism:** routing/cache/threshold decisions are arithmetic — same input, same output, bit
-   for bit. Temperature is fixed low (0.2). LLM-as-judge runs at temperature 0.
+   for bit. ALL THREE router stages are arithmetic; no model picks a route. Generation runs at
+   temperature 0 (measured: at 0.2, 2 of 6 multi-hop answers came out wrong).
 7. **Config-driven:** all parameters live in `config.yaml` (models, thresholds, router utterances,
    ports). No hardcoded paths or magic numbers in code.
 8. Every pipeline stage emits an **OpenTelemetry span** (see `references/telemetry.md`).
@@ -45,9 +46,9 @@ for disambiguation and final answer generation only.
 
 ```
 data_drop/  →  watcher  →  split images  →  GLM-OCR (OCR)  →  chunking
-        →  SEMANTIC ROUTER (heuristic → cosine+margin → LLM-as-judge)
+        →  SEMANTIC ROUTER (heuristic → cosine+margin → store section headings)
         →  [RAG1 SQLite] [RAG2 Qdrant] [RAG3 graph networkx]
-USER QUERY → CAG cache (FAISS RAM, cosine ≥ 0.92 = hit)
+USER QUERY → CAG cache (FAISS RAM, cosine ≥ 0.80 = hit)
         →  router (same engine) → RAG → LLM answer  →  WS stream + OTel spans
 ```
 
@@ -55,11 +56,11 @@ USER QUERY → CAG cache (FAISS RAM, cosine ≥ 0.92 = hit)
 
 | Role | Model | File | Port |
 |---|---|---|---|
-| LLM (reasoning, SQL, NER, judge, answers) | Qwen3-14B | `Qwen3-14B-Q4_K_M.gguf` | 8080 |
+| LLM (SQL, OpenIE on ingest, answers) | Qwen3.5-4B | `Qwen3.5-4B-Q4_K_M.gguf` | 8080 |
 | OCR (images in data_drop) | GLM-OCR (~830M params) | `GLM-OCR-Q8_0.gguf` + `mmproj-GLM-OCR-Q8_0.gguf` | 8081 |
 | Embeddings (BGE-M3, 1024 dims, PT/EN) | BGE-M3 | `bge-m3-Q8_0.gguf` | 8082 |
 
-VRAM budget: ~9.5GB (Qwen3-14B) + ~2.3GB (GLM-OCR) + ~0.6GB (BGE-M3) ≈ 12.4GB of 16GB — all three
+VRAM budget: ~9.5GB (Qwen3.5-4B) + ~2.3GB (GLM-OCR) + ~0.6GB (BGE-M3) ≈ 12.4GB of 16GB — all three
 stay resident. Qdrant standalone runs as a separate process (v1.19.0, Windows native binary).
 
 ## 3. Development workflow
