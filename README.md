@@ -11,6 +11,12 @@ reports itself, so you can watch the routing happen and see the numbers behind i
 
 Runs entirely on one machine: AMD GPU through Vulkan, no CUDA, no Docker, no cloud.
 
+![The chat, with the route scoreboard and the span waterfall beside it](docs/screenshots/chat-graph.png)
+
+*A question whose answer spans two documents that never mention each other. The right panel is the
+whole point: the score each route got, the margin that decided it, and every step with its own
+latency — `rag.graph.pagerank` at 1 ms next to `chat.stream` at 753 ms.*
+
 ---
 
 ## The problem it takes seriously
@@ -94,16 +100,29 @@ route becomes that route's score.
 ```
 margin = score_top1 − score_top2
 
-score_top1 ≥ tau_high  AND  margin ≥ delta   →  take it, no model involved
+score_top1 ≥ tau_high  AND  margin ≥ delta   →  take it
 score_top1 < tau_low                          →  fall back to free text
-otherwise                                     →  genuine tie, ask a model
+otherwise                                     →  gray zone, go to stage 3
 ```
 
-This is a 1-nearest-neighbour classifier with a rejection rule. Cost: **8–13 ms**, measured.
+This is a 1-nearest-neighbour classifier with a rejection rule. Cost: **8.8 ms**, measured.
 
-**3 · Model tiebreak.** Only in the gray zone. It is asked twice with the two routes swapped, and
-its answer is only trusted if both orderings agree — small models favour whichever option is listed
-first. The UI marks these answers, because that is the one case where a model, not arithmetic, chose.
+**3 · Store evidence.** Only in the gray zone. The configured phrases say what a route is *for*;
+they cannot know what a corpus turned out to contain. So each store is asked for the section
+headings it actually holds (`RAGBase.content_anchors`), and the question is scored against those
+too. Ingesting a document teaches the router about it with no config edit.
+
+**There is no model in any of the three stages.** A model used to break the gray-zone tie, and it
+was measured out: on those questions, stage 2 alone was right 9 times out of 10 and the judge 8. It
+agreed with the geometry in 9 of the 10 — two model calls to repeat what arithmetic had already
+said — and the one time it disagreed, it was wrong. Store headings took routing on unseen questions
+from 82% to 95% instead.
+
+![A gray-zone question resolved by store evidence](docs/screenshots/chat-evidence.png)
+
+*The gray zone, resolved without a model. Nothing hand-written in `config.yaml` could know that
+"Banco de Dados Órion" names a section in the graph — so this question used to go to the relational
+store, whose only table is about sales.*
 
 ---
 
@@ -115,6 +134,12 @@ first. The UI marks these answers, because that is the one case where a model, n
 | **RAG 2** · Qdrant | Free text | Cosine over HNSW | No schema to impose, no relations to model — only meaning. |
 | **RAG 3** · networkx | Entities and relations | Personalized PageRank | Multi-hop. "If A fails, what breaks?" needs topology, not similarity. |
 
+![A figure answered by generated SQL, with the query shown as the source](docs/screenshots/chat-relational.png)
+
+*Why the first row of that table matters. The source is not a passage — it is the query that was
+run and the row it returned. The figure came out of a `SUM`, so it is either right or the SQL is
+wrong, and the SQL is on screen either way.*
+
 RAG 3 is HippoRAG 2 reimplemented from the [paper](https://arxiv.org/pdf/2502.14802): the model
 extracts subject–relation–object triples, networkx holds the graph, and the walk teleports back to
 the question's entities so the ranking means "relevant to *this* question".
@@ -122,6 +147,12 @@ the question's entities so the ranking means "relevant to *this* question".
 The official `hipporag` package needs `torch` and `vLLM`, which are Linux/CUDA only. Reimplementing
 it was a constraint, and it turned out to be the more useful outcome — the maths is visible and
 testable rather than hidden behind an import.
+
+![The Corpus view: what was ingested and which store each chunk landed in](docs/screenshots/corpus.png)
+
+*Routing is per chunk, not per file — which is why `normas_dados.md` shows up in two stores. The
+router sent three of its chunks to the graph; the fourth had no extractable relation, so it fell
+back to free text rather than being dropped.*
 
 ---
 
@@ -134,20 +165,22 @@ p50 and p95 rather than an average.
 
 | | p50 | p95 |
 |---|---:|---:|
-| Routing decision (deterministic stage) | **9.5 ms** | 10.7 ms |
-| Routing decision on the wire, streaming | **41 ms** | 45 ms |
-| Time to first token | **378 ms** | 431 ms |
-| Full answer, relational | **764 ms** | 994 ms |
-| Full answer, graph | **929 ms** | 945 ms |
-| Full answer, vectorial | **1002 ms** | 1025 ms |
-| Cache hit, same question | **12 ms** | 16 ms |
+| Routing decision (deterministic stage) | **8.8 ms** | 9.7 ms |
+| Routing decision on the wire, streaming | **39 ms** | 65 ms |
+| Time to first token | **223 ms** | 267 ms |
+| Full answer, vectorial | **632 ms** | 632 ms |
+| Full answer, relational | **737 ms** | 743 ms |
+| Full answer, graph | **822 ms** | 827 ms |
+| Cache hit, same question | **9.3 ms** | 9.5 ms |
 | Share of a request spent inside model calls | **99 %** | |
 
-Per stage, from each request's own spans rather than a second set of timers: `pipeline.router`
-9.5 ms, `rag.relational.generate_sql` 390 ms, `rag.graph.seeds` 247 ms, `rag.graph.pagerank`
-1.0 ms, `rag.vectorial.search` 4.1 ms. Two of those are worth reading together: **PageRank, the
-algorithm the graph route is named for, costs 1 ms — and finding the entities to seed it costs
-247**, because entity vectors are recomputed on every query instead of at ingestion.
+Per stage, from each request's own spans rather than a second set of timers:
+`pipeline.router` 8.8 ms, `rag.relational.generate_sql` 376 ms, `rag.graph.seeds` 76 ms,
+`rag.graph.fuse` 54 ms, `rag.graph.pagerank` 1.0 ms.
+
+Two of those are worth reading together: **Personalized PageRank, the algorithm the graph route is
+named for, costs 1 ms — and everything around it costs 130.** Retrieval is not where the time goes;
+99% of a request is the model writing the answer.
 
 Two changes worth their own line, because both were found by instrumenting rather than guessing:
 
@@ -157,56 +190,72 @@ Two changes worth their own line, because both were found by instrumenting rathe
   from 0.2 to 0. Sampling was silently corrupting a third of the answers. *(n = 6, one question —
   enough to justify a free change, not enough to be a benchmark.)*
 
-### Retrieval and answers, on a 40-question golden set
+### Retrieval and answers, on two sets of 40 questions
 
-`uv run python scripts/evaluate.py` against the [`demo/`](demo/README.md) corpus. Questions were
-written from the corpus, not from the results.
+Two sets, because one is not enough to tell capability from fit. `golden_set.yaml` is where the
+failures were diagnosed and the thresholds chosen, which makes it a training set. `holdout_set.yaml`
+was written afterwards from the same six documents and was never consulted while choosing an anchor,
+a threshold or an algorithm. **The held-out column is the honest estimate**; the gap between the two
+is the overfitting.
+
+```bash
+uv run python scripts/evaluate.py
+uv run python scripts/evaluate.py --set eval/holdout_set.yaml
+```
 
 |              |  n | router | r@1 | r@5 | MRR | empty | facts |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **overall**  | 40 | 88% | 43% | 57% | 0.52 | 39% | 74% |
-| relational   | 12 | 100% | — | — | — | — | 83% |
-| vectorial    | 12 | 58% | 42% | 50% | 0.46 | 42% | 75% |
-| graph        | 16 | 100% | 44% | 62% | 0.56 | 38% | 67% |
+| **golden, overall**   | 40 | 90% | 73% | 88% | 0.81 | 4% | 91% |
+| relational   | 12 | 100% | — | — | — | — | 100% |
+| vectorial    | 12 | 83% | 75% | 83% | 0.79 | 8% | 88% |
+| graph        | 16 | 88% | 72% | 91% | 0.83 | 0% | 87% |
+| **held-out, overall** | 40 | **95%** | 68% | **89%** | 0.77 | **0%** | **94%** |
+| relational   | 12 | 100% | — | — | — | — | 100% |
+| vectorial    | 12 | 92% | 58% | 83% | 0.68 | 0% | 90% |
+| graph        | 16 | 94% | 75% | 94% | 0.84 | 0% | 93% |
+
+Where it started, before any of this: router 88%, recall@5 **57%**, empty **39%**, facts 74%.
 
 `facts` asks whether the answer contained the figure or proper noun it had to contain — restricted
 to what a model cannot legitimately reword, so a substring check measures correctness rather than
-phrasing. `recall@k` does not apply to the relational route, which returns SQL rows rather than
-passages.
+phrasing. Case, accents, thousands separators and number words are normalised on both sides, so
+"cinco" and "5" count as the same answer. `recall@k` does not apply to the relational route, which
+returns SQL rows rather than passages.
 
-**The column that explains the table is `empty`.** Read alone, `recall@5 = 57%` looks like a
-mediocre ranker. It is not:
+**`recall@1` is the one metric under 80%, and it has an arithmetic ceiling.** Three questions need
+two passages to be fully answered, and no single chunk contains both, so the best achievable r@1 on
+this set is 95%. It is also not what the system serves: the answer step receives the top 5, and
+that column reads 88–89%.
 
-| | |
-|---|---|
-| recall@5, on questions where retrieval returned anything | **94%** |
-| MRR, same subset | **0.85** |
-| queries that returned an empty list | **39%** |
+#### What the measurement changed
 
-When retrieval returns something it returns the right passage almost always, usually at rank 1.
-**The failure is coverage, not ranking** — and every single wrong answer with a retrieval target
-behind it came from an empty result, not a badly ordered one.
+**Named-entity extraction was removed from the search path.** It returned an empty list for 6 of the
+16 graph questions — every one of them a question that *describes* what it wants instead of naming
+it ("which rule governs personal data") — and graph search then returned nothing at all. Matching
+the whole question against the entity names finds the right node in all 16, and deletes a model call
+from every graph query. `empty` went from 39% to 0%.
 
-The cause is structural. Graph search seeds Personalized PageRank from entities extracted out of the
-question, so a question that *describes* what it wants without naming anything — "who approves a
-thirty-thousand purchase", "which rule governs personal data" — finds no seed and returns nothing.
-The entity that would answer it is the answer, not the question.
+**The model that broke routing ties was removed.** On the gray-zone questions, stage 2 alone was
+right 9 times out of 10 and the judge 8. It agreed with the geometry in 9 of the 10 — two model
+calls to repeat what arithmetic had already said — and the one time it disagreed, it was wrong.
+Stage 3 now asks each store for its section headings instead, which took routing on unseen questions
+from 82% to 95%: nothing written by hand in `config.yaml` could know that "Banco de Dados Órion"
+names a section in the graph. **Every stage of the router is now arithmetic.**
 
-This measurement changed a decision. The plan had recorded a suspicion that retrieval scores
-clustered too tightly and that reranking was the likely fix. A reranker would have improved nothing
-here: the ordering was already right. Building it before measuring would have been a week spent on
-the wrong half of the pipeline.
+**A reranker was not built.** The plan had recorded a suspicion that retrieval scores clustered too
+tightly and that reranking was the fix. Conditioned on retrieval returning anything, recall@5 was
+already 94% — the ordering was right and the coverage was not. That week would have gone to the
+wrong half of the pipeline.
 
-Two more findings, both now queued rather than patched:
+**Two things the SQL route was doing quietly.** Asked a question the sales table cannot answer, the
+model wrote `SELECT * FROM vendas_2026_q1` and five arbitrary rows became the context for a
+confident answer about the wrong subject. Worse, one query answered from itself:
+`SELECT 'Banco de Dados Orion' AS banco, 'tempo real' AS frequencia FROM vendas_2026_q1` — valid,
+read-only, and a hallucination wearing SQL syntax. Both are now rejected structurally, and a store
+that returns nothing hands the question to the vector store instead of giving up.
 
-- **Text-to-SQL loses the question's intent.** `ORDER BY receita ASC LIMIT 1` correctly returned
-  `Norte`, and the model answered "only a list of regions, impossible to determine". The intent
-  lives in the query, and the model is only shown the result.
-- **`vectorial` is the weakest route at 58%.** Counting questions about prose ("how many regions do
-  they operate in") go to `relational`; procedural ones go to `graph`. The vectorial anchors
-  describe narrative and documents and cover neither shape.
-
-Per-question detail, including every answer, is in `eval/results.json`.
+Per-question detail, including every answer, is in `eval/golden_results.json` and
+`eval/holdout_results.json`.
 
 ---
 
@@ -358,12 +407,27 @@ uv run python scripts/benchmark.py   # latency p50/p95, same requirements
 
 ## Seeing it run
 
-The three views are Chat, Corpus and Telemetry. Chat pairs the conversation with a live panel that
+Four views: Chat, Corpus, Telemetry and Servers. Chat pairs the conversation with a live panel that
 shows the per-route cosine scores, the margin the decision turned on, which stage made the call, and
-the span waterfall as it happens — the routing decision is on screen at about 23 ms, before
+the span waterfall as it happens — the routing decision is on screen at about 39 ms, before
 retrieval has even finished.
 
-To reproduce the screenshots and the demo:
+![The same question asked twice: the second answer comes from the cache](docs/screenshots/chat-cache.png)
+
+*The same question, asked twice. The second answer skips routing, retrieval and generation
+entirely — three spans and 10 ms, against roughly 800 ms for the first.*
+
+![The Servers view: start and stop each model](docs/screenshots/servers.png)
+
+*Each model is its own process, running windowless. Stopping one hands its VRAM straight back,
+which matters on a 16 GB card when something else needs the GPU. `ocr` shows hollow because it put
+itself to sleep after a minute idle and gave back 2.08 GB on its own.*
+
+The screenshots above are generated, not taken by hand — `uv run python scripts/screenshots.py`
+drives Chrome over the DevTools protocol and rewrites them all. A screenshot nobody can regenerate
+is one that quietly starts lying after the next UI change.
+
+To reproduce the demo yourself:
 
 ```bash
 uv run python scripts/start_servers.py
@@ -391,15 +455,19 @@ Stated because they are real, not because they are theoretical:
   fix it: legitimate paraphrases of the same question score 0.771 to 0.911, so the ranges overlap
   and no single cutoff separates them. `scripts/benchmark.py` reports cache hits and misses
   separately so this stays visible.
-- **Graph search returns nothing when it recognises no entity in the question.** 39% of golden-set
-  queries retrieved an empty list. Conditioned on retrieving anything, recall@5 is 94% and MRR 0.85
-  — so this is coverage, not ranking, and a reranker would fix none of it. Highest-impact open item.
-- **Text-to-SQL is shown the result but not the query it came from**, so a question whose intent
-  lives in the `ORDER BY` can be answered with "impossible to determine" over the correct row.
-- **The `vectorial` route is the weakest at 58%.** Counting and procedural questions about prose
-  land on the other two routes; its anchors describe neither shape.
-- **Graph search re-embeds every entity on every query.** 318 ms of a 514 ms graph lookup, growing
-  with the corpus. Entity vectors belong in the ingestion step.
+- **The router's anchors are a snapshot taken at startup.** Ingesting a document does not teach the
+  router about it until the process restarts, because the section headings each store contributes
+  are embedded once in `Router.create`.
+- **Store headings carry proper nouns, and proper nouns collide.** The heading "Contratos marco"
+  pulls "qual foi a receita do mes de marco" toward the graph, because *março* the month and
+  *Marco* the contract normalise to the same word. It costs two questions on the golden set and is
+  the price of letting the corpus speak for itself.
+- **`recall@1` sits at 68–73%.** Its ceiling on these sets is 95%, since three questions need two
+  passages and no chunk holds both. The answer step is served the top 5, where recall is 88–89%.
+- **The retrieval numbers describe a 24-chunk corpus.** With top-5 over 10 graph chunks, half the
+  store is returned every time, which is not a hard retrieval problem. Measured on this corpus,
+  plain cosine over chunk text beat Personalized PageRank at ranking (88% vs 66% r@1); the two are
+  fused precisely because neither dominates, and a larger corpus is what would settle it.
 - **Source files (`.py`, `.ts`, …) are not supported.** Doing it properly needs AST-aware chunking
   and probably a fourth route; adding the extension to the config would route code by accident
   rather than by decision.
