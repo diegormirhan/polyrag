@@ -7,6 +7,7 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, embed
 from app.rags.base import RAGBase, content_id
+from app.rags.graph import section_headings
 
 _tracer = trace.get_tracer("polyrag.rag")
 
@@ -46,6 +47,17 @@ class VectorialRAG(RAGBase):
             return {"collection": collection, "points": 0}
         info = await self._client.get_collection(collection)
         return {"collection": collection, "points": info.points_count or 0}
+
+    async def content_anchors(self) -> list[str]:
+        collection = self._settings.qdrant.collection
+        if not await self._client.collection_exists(collection):
+            return []
+        # scroll, not search: this wants every stored chunk's heading, not the
+        # nearest ones to some query. Runs once at startup, not per request.
+        points, _ = await self._client.scroll(
+            collection_name=collection, limit=10_000, with_payload=True, with_vectors=False
+        )
+        return section_headings(point.payload["text"] for point in points)
 
     async def query(self, question: str, top_k: int = 5) -> list[dict]:
         vector = (await embed(self._clients.embeddings, [question]))[0]
