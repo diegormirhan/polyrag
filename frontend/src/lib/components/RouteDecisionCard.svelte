@@ -7,7 +7,8 @@
 	const STAGE_COPY: Record<string, string> = {
 		heuristic: 'Decided by the tabularity heuristic — no embedding needed.',
 		embedding: 'Decided by cosine similarity and margin. No model was asked.',
-		llm_judge: 'Too close to call on the numbers — a model broke the tie.'
+		content_evidence:
+			'The anchors could not separate the top two, so the stores were asked which sections they hold. Still no model.'
 	};
 
 	// Sorted every render so the winner is always first; the ordering is the
@@ -29,8 +30,11 @@
 	{:else}
 		<div class="chosen">
 			<strong>{decision.route}</strong>
-			<span class="stage" class:judged={decision.decision_stage === 'llm_judge'}>
-				{decision.decision_stage === 'llm_judge' ? 'model tiebreak' : decision.decision_stage}
+			<!-- Amber marks the gray zone: the configured anchors did not decide on
+			     their own. It is no longer a model call, but it is still the branch
+			     worth noticing. -->
+			<span class="stage" class:judged={decision.decision_stage === 'content_evidence'}>
+				{decision.decision_stage === 'content_evidence' ? 'store evidence' : decision.decision_stage}
 			</span>
 		</div>
 

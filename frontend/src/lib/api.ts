@@ -4,7 +4,7 @@ export type Route = 'relational' | 'vectorial' | 'graph';
 
 export interface RouteDecision {
 	route: Route;
-	decision_stage: 'heuristic' | 'embedding' | 'llm_judge';
+	decision_stage: 'heuristic' | 'embedding' | 'content_evidence';
 	margin: number;
 	scores: Record<string, number>;
 }

@@ -8,10 +8,9 @@
 	let note = $state<string | null>(null);
 
 	const ABOUT: Record<string, string> = {
-		llm: 'Writes SQL, extracts entities, breaks routing ties and composes every answer.',
+		llm: 'Writes the SQL, extracts the graph triples on ingest, and composes every answer.',
 		ocr: 'Reads text and tables out of images. Releases its VRAM after a minute idle.',
 		embeddings: 'Turns text into the 1024-dimension vectors the router and the cache compare.',
-		judge: 'Resolves the router’s gray zone when geometry alone is not confident.',
 		qdrant: 'Stores the vectors for the vectorial route and searches them with HNSW.'
 	};
 
