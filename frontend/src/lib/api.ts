@@ -32,6 +32,21 @@ export interface ServiceHealth {
 	sleeping: boolean | null;
 }
 
+export interface ServerState {
+	name: string;
+	label: string;
+	url: string;
+	up: boolean;
+	sleeping: boolean | null;
+	/** False when reachable but started outside the app — no pid to stop safely. */
+	managed: boolean;
+}
+
+export interface ServerAction {
+	name: string;
+	result: string;
+}
+
 export interface IngestReport {
 	file: string;
 	chunks: number;
@@ -80,6 +95,11 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
 	health: () => json<{ ok: boolean; services: ServiceHealth[] }>('/api/v1/health'),
+	servers: () => json<ServerState[]>('/api/v1/servers'),
+	startServer: (name: string) =>
+		json<ServerAction>(`/api/v1/servers/${name}/start`, { method: 'POST' }),
+	stopServer: (name: string) =>
+		json<ServerAction>(`/api/v1/servers/${name}/stop`, { method: 'POST' }),
 	corpus: () => json<Corpus>('/api/v1/corpus'),
 	traces: () => json<Span[]>('/api/v1/telemetry/traces'),
 	jobs: () => json<IngestReport[]>('/api/v1/ingest/jobs'),

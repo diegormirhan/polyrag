@@ -6,7 +6,8 @@
 	const NAV = [
 		{ href: '/', label: 'Chat' },
 		{ href: '/corpus', label: 'Corpus' },
-		{ href: '/telemetry', label: 'Telemetry' }
+		{ href: '/telemetry', label: 'Telemetry' },
+		{ href: '/servers', label: 'Servers' }
 	];
 
 	const THEMES: { value: Theme; label: string; path: string }[] = [
