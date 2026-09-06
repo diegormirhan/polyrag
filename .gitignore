@@ -28,6 +28,8 @@ data/qdrant/
 data/graph/*.json
 data/ingest_manifest.json
 data/processed/*
+# pid and log files of the running servers
+data/run/
 !data/processed/.gitkeep
 data_drop/*
 !data_drop/.gitkeep
