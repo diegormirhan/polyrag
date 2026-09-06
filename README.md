@@ -1,8 +1,31 @@
+<div align="center">
+
 # PolyRAG
 
-[![CI](https://github.com/diegormirhan/polyrag/actions/workflows/ci.yml/badge.svg)](https://github.com/diegormirhan/polyrag/actions/workflows/ci.yml)
+**A federated RAG system that routes questions with arithmetic instead of an agent —
+and shows you the arithmetic while it does it.**
 
-**A federated RAG system that routes questions with arithmetic instead of an agent, and shows you the arithmetic while it does it.**
+[![CI](https://github.com/diegormirhan/polyrag/actions/workflows/ci.yml/badge.svg)](https://github.com/diegormirhan/polyrag/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/tag/diegormirhan/polyrag?label=release&color=0071e3)](https://github.com/diegormirhan/polyrag/tags)
+[![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](.python-version)
+[![SvelteKit](https://img.shields.io/badge/SvelteKit-2-FF3E00?logo=svelte&logoColor=white)](frontend/)
+
+[![Runs on](https://img.shields.io/badge/GPU-AMD%20·%20Vulkan-ED1C24?logo=amd&logoColor=white)](#running-it)
+[![No CUDA](https://img.shields.io/badge/CUDA-not%20required-555)](#running-it)
+[![No Docker](https://img.shields.io/badge/Docker-not%20required-555)](#running-it)
+[![Local](https://img.shields.io/badge/cloud-none-555)](#running-it)
+
+[What it does](#the-problem-it-takes-seriously) ·
+[Architecture](#architecture) ·
+[The router](#the-router) ·
+[Measurements](#what-is-measured) ·
+[The maths](#the-maths-in-one-page) ·
+[Run it](#running-it) ·
+[Limits](#known-limitations)
+
+</div>
+
+---
 
 Drop a spreadsheet, a scanned receipt and a policy document into one folder. PolyRAG reads each one,
 splits it, and decides — per chunk — whether it belongs in a SQL table, a vector index, or a
