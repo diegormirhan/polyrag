@@ -62,3 +62,30 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Render every Mermaid diagram
+        # The architecture diagram shipped broken and nobody noticed: "graph" is
+        # how Mermaid declares a diagram, so it cannot also be a node id, and
+        # GitHub rendered a parse error in place of the picture. Reading a diagram
+        # does not tell you whether it compiles -- only rendering it does.
+        #
+        # Every tracked Markdown file with a mermaid block, not just the README,
+        # so a diagram added elsewhere is covered the day it lands.
+        run: |
+          set -euo pipefail
+          files=$(git grep -l '```mermaid' -- '*.md')
+          echo "$files"
+          for file in $files; do
+            out="$RUNNER_TEMP/$(basename "$file")"
+            config=.github/puppeteer-config.json
+            npx -y @mermaid-js/mermaid-cli@11 -p "$config" -i "$file" -o "$out"
+          done
