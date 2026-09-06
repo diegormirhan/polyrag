@@ -56,7 +56,6 @@ class LlamaConfig(BaseModel):
     llm: LlmModelConfig
     ocr: OcrModelConfig
     embeddings: EmbeddingsModelsConfig
-    judge: LlmModelConfig  # Prometheus 2 — juiz dedicado do roteador (mesmo shape do llm, sem mmproj)
 
 
 class QdrantConfig(BaseModel):
@@ -77,7 +76,7 @@ class PathsConfig(BaseModel):
     graph_store: str  # RAG 3 (grafo persistido em JSON)
 
 
-# Prompts de cada RAG ficam aqui (mesma regra do ocr_prompt/llm_judge_prompt:
+# Prompts de cada RAG ficam aqui (mesma regra do ocr_prompt:
 # nada de prompt hardcoded no código). RAG 2 e RAG 3 entram nesta seção conforme
 # forem precisando dos seus próprios prompts.
 class RelationalRagConfig(BaseModel):
@@ -85,11 +84,12 @@ class RelationalRagConfig(BaseModel):
 
 
 class GraphRagConfig(BaseModel):
-    entity_match_threshold: float  # cosseno mínimo pra casar entidade da pergunta com nó do grafo
-    pagerank_damping: float  # fator d do PageRank (ver seção 4.6 do CLAUDE.md)
+    seed_top_k: int  # quantos nós no máximo semeiam o PageRank
+    seed_floor: float  # cosseno mínimo pergunta->nó pra virar semente
+    pagerank_damping: float
+    rrf_k: int  # constante do Reciprocal Rank Fusion  # fator d do PageRank (ver seção 4.6 do CLAUDE.md)
     max_entity_words: int  # teto determinístico pro tamanho do nome de uma entidade
     openie_prompt: str  # ingestão: {text} -> triplas em JSON (texto declarativo)
-    ner_prompt: str  # busca: {text} -> lista de entidades (pergunta não declara fato)
 
 
 class RagsConfig(BaseModel):
@@ -111,8 +111,6 @@ class RouterConfig(BaseModel):
     tau_high: float  # score mínimo do top1 pra aceitar a rota direto
     tau_low: float  # abaixo disso, nem tenta: cai no fallback vectorial
     delta_margin: float  # margem mínima (top1 - top2) pra considerar a decisão "confiante"
-    llm_judge_enabled: bool  # permite desligar o juiz LLM e forçar decisão só por threshold
-    llm_judge_prompt: str
     routes: dict[str, RouteConfig]  # chave = nome da rota ("relational", "vectorial", "graph")
 
 

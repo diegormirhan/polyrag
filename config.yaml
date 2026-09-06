@@ -28,17 +28,6 @@ llama:
     ctx_size: 8192
     n_gpu_layers: -1
     dimensions: 1024
-  judge:          # Estágio 3 do roteador — aponta pro MESMO servidor do llm (porta 8080).
-                  # O Prometheus 2 dedicado saiu: modelos especializados em avaliação só
-                  # superam modelos gerais a partir de ~14B, e a medição do Dia 4 mostrou
-                  # que ele melhorou 0 decisões e corrompeu 1. Custo agora: 0 GB de VRAM.
-    model_path: models/Qwen3.5-4B-Q4_K_M.gguf
-    host: 127.0.0.1
-    port: 8080
-    ctx_size: 8192
-    n_gpu_layers: -1
-    temperature: 0.0
-
 qdrant:
   bin_path: bin/qdrant/qdrant.exe
   storage_path: data/qdrant
@@ -72,8 +61,11 @@ rags:
 
       SQL:
   graph:
-    entity_match_threshold: 0.6   # cosseno mínimo pra casar entidade da pergunta com nó do grafo
+    seed_top_k: 5      # no máximo 5 nós semeiam o passeio; o PageRank decide o resto
+    seed_floor: 0.45   # medido: pergunta fora do assunto satura em 0.41, pergunta
+                       # legítima de grafo começa em 0.53 — 0.45 tem folga dos dois lados
     pagerank_damping: 0.85        # fator d do PageRank (0.85 = valor clássico do paper do Google)
+    rrf_k: 60                     # constante clássica do RRF; medido, 1 a 60 dá o mesmo resultado aqui
     max_entity_words: 5           # acima disso é oração, não entidade — a tripla é descartada
     openie_prompt: |
       Extract subject-relation-object triples from the text.
@@ -115,28 +107,6 @@ rags:
       - If there are no clear relationships, reply with an empty array: []
 
       JSON:
-    ner_prompt: |
-      List the named entities mentioned in the question below.
-
-      Entities are the concrete things the question is about: people, companies,
-      products, contracts, documents, processes. Not verbs, not generic words.
-
-      Example question:
-      Se a Empresa Delta atrasar, o Contrato Z e afetado?
-
-      Example JSON:
-      ["Empresa Delta", "Contrato Z"]
-
-      Question:
-      {text}
-
-      Rules:
-      - Reply with ONLY a JSON array of strings, no explanation, no markdown fences.
-      - Copy each entity name exactly as written in the question.
-      - Drop leading articles (o, a, os, as, um, uma).
-      - If there are no named entities, reply with an empty array: []
-
-      JSON:
 
 # ---------- Âncoras do Roteador (treinam o roteador sem escrever código) ----------
 router:
@@ -144,22 +114,11 @@ router:
   tau_high: 0.45
   tau_low: 0.35
   delta_margin: 0.08
-  llm_judge_enabled: true
-  llm_judge_prompt: |
-    Follow these steps to decide which route best matches the content below.
-    1. Identify what the content is about: tabular/numeric data, free-form narrative
-       text, or a business rule/dependency between entities.
-    2. Compare that identification against each route's description.
-    3. Choose the route that matches best.
-
-    Route "{route_a}": {desc_a}
-    Route "{route_b}": {desc_b}
-
-    Content:
-    {text}
-
-    Reply with ONLY the exact route name you chose, nothing else.
-    Chosen route:
+  # NAO existe mais um juiz-modelo. O Estagio 3 era uma chamada de LLM e foi
+  # medido tres vezes sem nunca compensar: na zona cinzenta o Estagio 2 sozinho
+  # acertava 9/10 e o juiz 8/10, concordando com a geometria em 9 dos 10 casos.
+  # Hoje o desempate usa os cabecalhos de secao que cada base declara ter -- ver
+  # RAGBase.content_anchors. Todos os tres estagios sao aritmetica.
   routes:
     relational:
       description: "Dados tabulares, planilhas, finanças, logs estruturados"
@@ -168,18 +127,36 @@ router:
         - "qual o total de receita do trimestre"
         - "liste os 10 produtos mais vendidos"
         - "média salarial por departamento"
+        - "soma das unidades vendidas por produto"
+        - "qual valor aparece na coluna dessa planilha"
+        - "compare os totais entre dois períodos do relatório numérico"
+        - "qual item da tabela tem o maior número"
     vectorial:
       description: "Texto não estruturado, narrativas, documentos, artigos"
       utterances:
-        - "resuma o documento sobre história da empresa"
-        - "o que o artigo diz sobre mudanças climáticas"
-        - "quais os pontos principais do relatório narrativo"
+        - "a história e a trajetória da organização"
+        - "o que este texto narra sobre o assunto"
+        - "orientação de como proceder numa situação de atendimento ao público"
+        - "o que o material escrito explica sobre o tema"
+        - "fatos descritos ao longo de um texto corrido"
+        - "o que a organização declara sobre seus valores e seu propósito"
+        - "de que forma a equipe deve se comunicar com quem procura a empresa"
+        - "detalhes contados em um documento descritivo sobre a instituição"
     graph:
       description: "Regras de negócio, compliance, dependências, multi-hop"
       utterances:
         - "se o fornecedor A falhar, quais contratos são afetados"
         - "quais políticas se aplicam a transferências internacionais"
         - "rastreie as dependências desse processo de aprovação"
+        - "qual norma ou regulamento governa esse procedimento"
+        - "quem detém a alçada para autorizar nesse caso"
+        # Dizia "que sistema depende de qual outro sistema": a palavra "sistema"
+        # sozinha puxava "o que motivou a criação do Sistema Atlas" — uma pergunta
+        # de história — pra cá, com 0.466 contra 0.380 da rota certa. Uma âncora
+        # deve descrever a FORMA da relação, não um substantivo do corpus.
+        - "o que depende do que para continuar funcionando"
+        - "qual prazo obrigatório está definido em regulamento interno"
+        - "qual o efeito em cascata de uma falha nesse componente"
 
 cache:
   enabled: true
