@@ -40,6 +40,22 @@ class HealthResponse(BaseModel):
     services: list[ServiceHealth]
 
 
+class ServerState(BaseModel):
+    name: str
+    label: str  # which model it serves, so the UI names the thing not the slot
+    url: str
+    up: bool
+    sleeping: bool | None = None
+    # False when the process is reachable but was not started through the app:
+    # there is no pid to trust, so the UI must not offer a stop button that lies.
+    managed: bool = False
+
+
+class ServerAction(BaseModel):
+    name: str
+    result: str  # started | already running | stopped | already stopped | unmanaged
+
+
 class CorpusFile(BaseModel):
     name: str
     size_bytes: int
