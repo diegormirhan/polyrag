@@ -33,10 +33,22 @@ With the backend running, the hot folder ingests within seconds. Without it:
 uv run python -u tests/test_ingest_integration.py
 ```
 
-Measured on this corpus: **23 of 24 chunks routed as expected.** The one miss is
-a paragraph of `manual_atendimento.md` about handling complaints, which reads
-like a rule and goes to the graph. Worth showing rather than hiding — it is what
-a threshold-based decision looks like near its boundary.
+Where the 24 chunks land, from `GET /api/v1/corpus`:
+
+| File | Stored in |
+|---|---|
+| `vendas_2026_q1.csv` | relational 1 |
+| `sobre_a_meridiano.md` | vectorial 5 |
+| `manual_atendimento.md` | vectorial 5 |
+| `politicas_compras.md` | graph 4, vectorial 1 |
+| `normas_dados.md` | graph 3, vectorial 1 |
+| `dependencias_sistemas.md` | graph 3, vectorial 1 |
+
+Three chunks sit in the vector store despite being about rules. That is the
+ingestion fallback, not a routing miss: the router judges meaning, the graph
+needs an extractable relation, and text that yields no triple is kept as free
+text rather than dropped. Before that fallback existed those chunks were in no
+store at all.
 
 ## The script
 
@@ -56,13 +68,16 @@ Other verified figures: total revenue 12.950.950 · March 3.293.750 · Nordeste
 ### Vectorial — meaning, with nothing to match on literally
 
 ```
-O que motivou a criação do Sistema Atlas?
+Em que ano a Meridiano Logística foi fundada?
 ```
 
-The answer is in the company history: two distribution centres kept separate
-spreadsheets after the 2018 Recife expansion, and monthly reconciliation ate a
-week of manual work. The question shares almost no words with that passage, so
-keyword search would miss it.
+Answer: **2011**, in a rented room in Belém. The figure sits inside a paragraph
+of prose with no table and no heading naming it, so it can only be found by
+meaning.
+
+Questions may be asked in English against this Portuguese corpus. Routing and
+retrieval work across the two because BGE-M3 embeds both into one space, and the
+answer follows the language of the question while the sources stay as written.
 
 ### Graph — multi-hop, and the reason this store exists
 
@@ -102,27 +117,32 @@ paraphrase hits it too — the match is on the embedding, not the string.
 ## What does not work, and why it is here
 
 ```
+O que motivou a criação do Sistema Atlas?
+```
+
+The answer is in the company history: two distribution centres kept separate
+spreadsheets after the 2018 Recife expansion, and monthly reconciliation ate a
+week of manual work. It is a narrative question, and it goes to the **graph**.
+
+The cause is visible in the router's scoreboard. Each store contributes the
+section headings it holds, and the graph holds a section literally called
+`Sistema Atlas`. The question names it, so the graph wins on evidence that is
+real but beside the point: the graph knows the entity, it just does not hold the
+story. Entity presence is not the same as answer presence, and nothing in the
+current design distinguishes them.
+
+This section used to document a different failure, which the measurements fixed:
+
+```
 Se o Sistema Atlas ficar indisponível, qual política de aprovação é afetada?
 ```
 
-This one **fails**, and the failure is worth understanding because it is not
-where you would expect.
+That one used to answer that the context established no relation. Named-entity
+extraction was pulling generic concepts out of the question (`aprovação prévia`,
+`dupla aprovação`) and seeding PageRank with them, which ranked PC-04 above
+PC-09. Seeding from the question's own embedding and fusing the PageRank order
+with direct similarity fixed it: it now answers **Política PC-09**, correctly.
 
-Retrieval is fine: the PC-09 chunk comes back ranked second and the Atlas chunk
-third, so the model receives both halves of the chain. It still answers that the
-context establishes no relation. The gap is in generation — the answer prompt
-caps the response at three sentences with no reasoning steps, and a 4B model
-needs room to make the inference that the terser question above does not
-require.
-
-Two things visible in the same trace, both already queued for measurement:
-
-- The seeds include `aprovação prévia`, `dupla aprovação` and `aprovação formal`.
-  Named-entity extraction pulled generic concepts out of the question and
-  `entity_match_threshold: 0.6` matched all of them, which is what ranks PC-04
-  above PC-09.
-- Retrieval scores cluster tightly (0.2028, 0.1009, 0.0387), so no fixed floor
-  separates useful from useless here.
-
-Neither is patched to make the demo look better. A corpus exists to find these,
-and the golden set is what decides whether they are worth fixing.
+Neither the old failure nor the new one was patched to make the demo look
+better. A corpus exists to find these, and the golden set is what decides
+whether they are worth fixing.
