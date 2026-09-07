@@ -202,15 +202,19 @@ async def main() -> None:
 # and the process controls.
 SHOTS = [
     # name, path, question (None = just load the page), ask twice for a cache hit
-    ("chat-relational", "/", "Qual foi a receita total da regiao Sudeste?", False),
+    #
+    # Asked in English against a Portuguese corpus, on purpose. The answer follows
+    # the question's language and the sources show the passage as it was written,
+    # which is the multilingual behaviour rather than a translation step.
+    ("chat-relational", "/", "What was the total revenue of the Sudeste region?", False),
     (
         "chat-graph",
         "/",
-        "Os pedidos processados pelo Sistema Atlas seguem qual politica de aprovacao?",
+        "Which approval policy do the orders processed by Sistema Atlas follow?",
         False,
     ),
-    ("chat-evidence", "/", "Para qual banco o Banco de Dados Orion replica?", False),
-    ("chat-cache", "/", "Quem pode suspender o Contrato Marco 2026?", True),
+    ("chat-evidence", "/", "Which database does the Orion Database replicate to?", False),
+    ("chat-cache", "/", "Who can suspend the Contrato Marco 2026?", True),
     ("corpus", "/corpus", None, False),
     ("servers", "/servers", None, False),
     ("telemetry", "/telemetry", None, False),
