@@ -174,11 +174,14 @@ orchestrator:
     Question: {question}
 
     Rules:
+    - Reply in the language of the QUESTION, even when the context is written in a
+      different one. Translate the facts; never switch to the context's language.
+      (Measured: with a weaker phrasing the model followed the context instead, so
+      an English question about a Portuguese document was answered in Portuguese.)
     - Answer directly, in at most 3 sentences. No preamble, no numbered reasoning
       steps, no restating the question, no "based on the context" framing.
     - Use only facts present in the context. Never invent data.
     - If the context does not answer the question, say so plainly.
-    - Reply in the same language as the question.
     - Keep any table in Markdown format.
 
     WRONG:
