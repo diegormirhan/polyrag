@@ -38,7 +38,11 @@ Runs entirely on one machine: AMD GPU through Vulkan, no CUDA, no Docker, no clo
 
 *A question whose answer spans two documents that never mention each other. The right panel is the
 whole point: the score each route got, the margin that decided it, and every step with its own
-latency — `rag.graph.pagerank` at 1 ms next to `chat.stream` at 753 ms.*
+latency, `rag.graph.pagerank` at 1 ms next to `chat.stream` at 621 ms.*
+
+*The question is English and the corpus is Portuguese. Routing, retrieval and the answer all work
+across the two because BGE-M3 embeds both into the same space; the sources are shown in the language
+they were written in, untranslated.*
 
 ---
 
@@ -233,10 +237,10 @@ uv run python scripts/evaluate.py --set eval/holdout_set.yaml
 | relational   | 12 | 100% | — | — | — | — | 100% |
 | vectorial    | 12 | 83% | 75% | 83% | 0.79 | 8% | 88% |
 | graph        | 16 | 88% | 72% | 91% | 0.83 | 0% | 87% |
-| **held-out, overall** | 40 | **95%** | 68% | **89%** | 0.77 | **0%** | **94%** |
+| **held-out, overall** | 40 | **95%** | 68% | **89%** | 0.77 | **0%** | **92%** |
 | relational   | 12 | 100% | — | — | — | — | 100% |
 | vectorial    | 12 | 92% | 58% | 83% | 0.68 | 0% | 90% |
-| graph        | 16 | 94% | 75% | 94% | 0.84 | 0% | 93% |
+| graph        | 16 | 94% | 75% | 94% | 0.84 | 0% | 86% |
 
 Where it started, before any of this: router 88%, recall@5 **57%**, empty **39%**, facts 74%.
 
@@ -460,10 +464,12 @@ uv run uvicorn --app-dir backend app.main:app --port 8000
 npm --prefix frontend run dev
 ```
 
-Then ask, in order: a figure (`Qual foi a receita total da regiao Sudeste?`), something narrative
-(`O que motivou a criacao do Sistema Atlas?`), a chain that crosses two files (`Os pedidos
-processados pelo Sistema Atlas seguem qual politica de aprovacao?`), and finally any of them a
-second time to watch the cache answer in 12 ms. [`demo/README.md`](demo/README.md) has the full
+Then ask, in order: a figure (`What was the total revenue of the Sudeste region?`), something
+narrative (`In what year was Meridiano Logistica founded?`), a chain that crosses two files (`Which
+approval policy do the orders processed by Sistema Atlas follow?`), and finally any of them a second
+time to watch the cache answer in 12 ms. The corpus is in Portuguese and the questions are in
+English on purpose: routing and retrieval work across languages because BGE-M3 embeds both into one
+space, and the sources are shown untranslated. [`demo/README.md`](demo/README.md) has the full
 script, the expected figures, and the two questions that fail.
 
 ---
@@ -492,6 +498,10 @@ Stated because they are real, not because they are theoretical:
   store is returned every time, which is not a hard retrieval problem. Measured on this corpus,
   plain cosine over chunk text beat Personalized PageRank at ranking (88% vs 66% r@1); the two are
   fused precisely because neither dominates, and a larger corpus is what would settle it.
+- **Answering in the question's language is an instruction, not a guarantee.** The answer prompt
+  says to follow the question even when the context is in another language, and at temperature 0 the
+  model obeys for most questions and ignores it for some. Measured: an English question about the
+  support manual came back in Portuguese while three others on the same corpus came back in English.
 - **Source files (`.py`, `.ts`, …) are not supported.** Doing it properly needs AST-aware chunking
   and probably a fourth route; adding the extension to the config would route code by accident
   rather than by decision.
