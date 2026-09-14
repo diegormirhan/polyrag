@@ -227,20 +227,33 @@ a threshold or an algorithm. **The held-out column is the honest estimate**; the
 is the overfitting.
 
 ```bash
-uv run python scripts/evaluate.py
-uv run python scripts/evaluate.py --set eval/holdout_set.yaml
+uv run python scripts/evaluate.py --reset                       # wipe, re-ingest, measure
+uv run python scripts/evaluate.py --set eval/holdout_set.yaml   # same corpus, other questions
 ```
+
+`--reset` is not a convenience. Measuring against whatever the stores happen to hold is how a number
+outlives the code that produced it, and that is exactly what happened here: the router's anchors were
+rewritten, the corpus was never re-ingested, and the figures below were for a while describing a
+chunk distribution this code no longer produces. Re-ingesting moved one paragraph of the company
+history from the vector store to the graph, and three questions that had been passing started to
+fail. The numbers here are from one `--reset` run, with the held-out set measured on the corpus that
+run produced.
 
 |              |  n | router | r@1 | r@5 | MRR | empty | facts |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **golden, overall**   | 40 | 90% | 73% | 88% | 0.81 | 4% | 91% |
+| **golden, overall**   | 40 | 88% | 66% | 80% | 0.74 | 4% | 86% |
 | relational   | 12 | 100% | — | — | — | — | 100% |
-| vectorial    | 12 | 83% | 75% | 83% | 0.79 | 8% | 88% |
+| vectorial    | 12 | 75% | 58% | 67% | 0.62 | 8% | 62% |
 | graph        | 16 | 88% | 72% | 91% | 0.83 | 0% | 87% |
-| **held-out, overall** | 40 | **95%** | 68% | **89%** | 0.77 | **0%** | **92%** |
-| relational   | 12 | 100% | — | — | — | — | 100% |
-| vectorial    | 12 | 92% | 58% | 83% | 0.68 | 0% | 90% |
-| graph        | 16 | 94% | 75% | 94% | 0.84 | 0% | 86% |
+| **held-out, overall** | 40 | **95%** | 71% | **86%** | 0.79 | **0%** | **89%** |
+| relational   | 12 | 100% | — | — | — | — | 92% |
+| vectorial    | 12 | 92% | 58% | 75% | 0.67 | 0% | 80% |
+| graph        | 16 | 94% | 81% | 94% | 0.88 | 0% | 93% |
+
+The held-out set scores **higher** than the set the thresholds were tuned against, which is the
+opposite of what overfitting looks like. The explanation is not that the tuning generalised
+unusually well: the golden set simply holds more of the hard vectorial cases, and the vectorial
+route is the weak one on both.
 
 Where it started, before any of this: router 88%, recall@5 **57%**, empty **39%**, facts 74%.
 
@@ -250,10 +263,15 @@ phrasing. Case, accents, thousands separators and number words are normalised on
 "cinco" and "5" count as the same answer. `recall@k` does not apply to the relational route, which
 returns SQL rows rather than passages.
 
-**`recall@1` is the one metric under 80%, and it has an arithmetic ceiling.** Three questions need
-two passages to be fully answered, and no single chunk contains both, so the best achievable r@1 on
-this set is 95%. It is also not what the system serves: the answer step receives the top 5, and
-that column reads 88–89%.
+**`recall@1` has an arithmetic ceiling.** Three questions need two passages to be fully answered,
+and no single chunk contains both, so the best achievable r@1 on these sets is 95%. It is also not
+what the system serves: the answer step receives the top 5.
+
+**The weak route is `vectorial`, and one paragraph explains most of it.** Re-ingesting moved the
+company-history paragraph about tracking terminals from the vector store to the graph, and the three
+questions that needed it went to 0% recall in their own route. The chunk sits close enough to the
+routing boundary that rewording the anchors moves it, which is a real fragility of anchor-based
+ingestion and not a measurement artefact.
 
 #### What the measurement changed
 
@@ -269,6 +287,12 @@ calls to repeat what arithmetic had already said — and the one time it disagre
 Stage 3 now asks each store for its section headings instead, which took routing on unseen questions
 from 82% to 95%: nothing written by hand in `config.yaml` could know that "Banco de Dados Órion"
 names a section in the graph. **Every stage of the router is now arithmetic.**
+
+Those headings are re-read after every ingestion, not only at startup. They used to be a boot
+snapshot, so a file dropped into the hot folder was invisible to the gray zone until the process
+restarted: measured on a live backend, a question about a subject the new file had just introduced
+scored 0.441 and answered "there is no information", and the same question after a restart scored
+0.662 and answered correctly.
 
 **A reranker was not built.** The plan had recorded a suspicion that retrieval scores clustered too
 tightly and that reranking was the fix. Conditioned on retrieval returning anything, recall@5 was
@@ -427,7 +451,7 @@ The scripts under `tests/` named `*_integration.py` are run by hand against a li
 their results; pytest collects nothing from them.
 
 ```bash
-uv run python scripts/evaluate.py    # the golden set, needs the servers and demo corpus
+uv run python scripts/evaluate.py --reset   # re-ingests, then measures the golden set
 uv run python scripts/benchmark.py   # latency p50/p95, same requirements
 ```
 
@@ -485,15 +509,19 @@ Stated because they are real, not because they are theoretical:
   fix it: legitimate paraphrases of the same question score 0.771 to 0.911, so the ranges overlap
   and no single cutoff separates them. `scripts/benchmark.py` reports cache hits and misses
   separately so this stays visible.
-- **The router's anchors are a snapshot taken at startup.** Ingesting a document does not teach the
-  router about it until the process restarts, because the section headings each store contributes
-  are embedded once in `Router.create`.
+- **Ingestion routing is sensitive to the anchors, so the corpus is not stable across changes.**
+  Rewriting the route anchors moved one paragraph of the company history from the vector store to
+  the graph, and three questions that had been passing began to fail. Nothing about the file or the
+  chunking changed; the chunk simply sits near the boundary. Any anchor edit therefore requires a
+  re-ingestion and a re-measurement, which is what `evaluate.py --reset` exists to enforce.
 - **Store headings carry proper nouns, and proper nouns collide.** The heading "Contratos marco"
   pulls "qual foi a receita do mes de marco" toward the graph, because *março* the month and
   *Marco* the contract normalise to the same word. It costs two questions on the golden set and is
   the price of letting the corpus speak for itself.
-- **`recall@1` sits at 68–73%.** Its ceiling on these sets is 95%, since three questions need two
-  passages and no chunk holds both. The answer step is served the top 5, where recall is 88–89%.
+- **`recall@1` sits at 66–71%.** Its ceiling on these sets is 95%, since three questions need two
+  passages and no chunk holds both. The answer step is served the top 5.
+- **The `vectorial` route is the weak one on both sets**, at 75% and 92% routing and 62% and 80%
+  answer facts. Counting and procedural questions about prose keep landing on the other two.
 - **The retrieval numbers describe a 24-chunk corpus.** With top-5 over 10 graph chunks, half the
   store is returned every time, which is not a hard retrieval problem. Measured on this corpus,
   plain cosine over chunk text beat Personalized PageRank at ranking (88% vs 66% r@1); the two are

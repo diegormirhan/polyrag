@@ -3,24 +3,24 @@
     "overall": {
       "questions": 40,
       "router_accuracy": 0.95,
-      "recall@1": 0.6785714285714286,
-      "recall@5": 0.8928571428571429,
-      "recall@10": 0.8928571428571429,
-      "mrr": 0.7738095238095238,
+      "recall@1": 0.7142857142857143,
+      "recall@5": 0.8571428571428571,
+      "recall@10": 0.8571428571428571,
+      "mrr": 0.7857142857142857,
       "empty_retrieval": 0.0,
-      "answer_facts": 0.9166666666666666,
-      "seconds_avg": 0.919613712499995
+      "answer_facts": 0.8888888888888888,
+      "seconds_avg": 0.9152892424999663
     },
     "graph": {
       "questions": 16,
       "router_accuracy": 0.9375,
-      "recall@1": 0.75,
+      "recall@1": 0.8125,
       "recall@5": 0.9375,
       "recall@10": 0.9375,
-      "mrr": 0.84375,
+      "mrr": 0.875,
       "empty_retrieval": 0.0,
-      "answer_facts": 0.8571428571428571,
-      "seconds_avg": 0.9116139562503349
+      "answer_facts": 0.9285714285714286,
+      "seconds_avg": 0.9137096812501113
     },
     "relational": {
       "questions": 12,
@@ -30,19 +30,19 @@
       "recall@10": null,
       "mrr": null,
       "empty_retrieval": null,
-      "answer_facts": 1.0,
-      "seconds_avg": 0.9279526083332712
+      "answer_facts": 0.9166666666666666,
+      "seconds_avg": 0.9438281666664352
     },
     "vectorial": {
       "questions": 12,
       "router_accuracy": 0.9166666666666666,
       "recall@1": 0.5833333333333334,
-      "recall@5": 0.8333333333333334,
-      "recall@10": 0.8333333333333334,
-      "mrr": 0.6805555555555555,
+      "recall@5": 0.75,
+      "recall@10": 0.75,
+      "mrr": 0.6666666666666666,
       "empty_retrieval": 0.0,
-      "answer_facts": 0.9,
-      "seconds_avg": 0.9219411583329323
+      "answer_facts": 0.8,
+      "seconds_avg": 0.8888563999999709
     }
   },
   "questions": [
@@ -57,7 +57,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A receita total da região Sul foi de 2.218.700.",
-      "seconds": 0.9582328000014968
+      "seconds": 0.9502578999999969
     },
     {
       "question": "Qual a receita total da regiao Centro-Oeste?",
@@ -70,7 +70,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A receita total da região Centro-Oeste é de 1.827.450.",
-      "seconds": 0.9605014000007941
+      "seconds": 0.9631282000000283
     },
     {
       "question": "Qual foi o faturamento do mes de janeiro?",
@@ -83,7 +83,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "O faturamento do mês de janeiro foi de 3.056.200 reais.",
-      "seconds": 0.9582358000006934
+      "seconds": 0.9446889000000738
     },
     {
       "question": "Qual foi a receita de fevereiro?",
@@ -93,10 +93,12 @@
       "recall": {},
       "reciprocal_rank": null,
       "retrieved": null,
-      "facts_ok": true,
-      "missing_facts": [],
-      "answer": "A receita de fevereiro foi de 3.146.600.",
-      "seconds": 0.9157889999987674
+      "facts_ok": false,
+      "missing_facts": [
+        "3.146.600"
+      ],
+      "answer": "A receita de fevereiro foi de 108.000, 249.750, 218.400, 366.300 ou 139.200, conforme os registros no banco de dados.",
+      "seconds": 1.3762647000003199
     },
     {
       "question": "Qual a receita total do produto Armazenagem?",
@@ -109,7 +111,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A receita total do produto Armazenagem é de 4.516.800.",
-      "seconds": 0.9383104999997158
+      "seconds": 0.8951796999999715
     },
     {
       "question": "Quantas unidades foram vendidas na regiao Sudeste?",
@@ -122,7 +124,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "Foram vendidas 2474 unidades na região Sudeste.",
-      "seconds": 0.8832652999990387
+      "seconds": 0.8445576999993136
     },
     {
       "question": "Quantas unidades a regiao Norte movimentou?",
@@ -135,7 +137,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A região Norte movimentou 710 unidades.",
-      "seconds": 0.8002228999994259
+      "seconds": 0.775519699999677
     },
     {
       "question": "Qual foi a receita da regiao Sul em janeiro?",
@@ -148,7 +150,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A receita da região Sul em janeiro foi de 537.400 reais.",
-      "seconds": 1.007496899999751
+      "seconds": 0.9811547999997856
     },
     {
       "question": "Qual mes teve o maior faturamento?",
@@ -161,7 +163,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "O mês de abril teve o maior faturamento.",
-      "seconds": 0.7601902999995218
+      "seconds": 0.7384677000000011
     },
     {
       "question": "Qual mes teve o menor faturamento?",
@@ -174,7 +176,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "O mês de janeiro teve o menor faturamento, conforme indicado pelo resultado da consulta SQL que ordenou as vendas por receita em ordem crescente.",
-      "seconds": 0.979979200001253
+      "seconds": 0.9545654999992621
     },
     {
       "question": "Qual produto gerou menos receita no total?",
@@ -187,7 +189,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "O produto que gerou menos receita no total foi Armazenagem, com um valor de 4.516.800.",
-      "seconds": 1.2010455999989063
+      "seconds": 1.1478266999993139
     },
     {
       "question": "Qual regiao vendeu menos unidades?",
@@ -200,10 +202,27 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A região que vendeu menos unidades é o Norte.",
-      "seconds": 0.7721615999998903
+      "seconds": 0.754326499999479
     },
     {
       "question": "Com quantos caminhoes a empresa comecou?",
+      "expected_route": "vectorial",
+      "actual_route": "vectorial",
+      "route_ok": true,
+      "recall": {
+        "1": 1.0,
+        "5": 1.0,
+        "10": 1.0
+      },
+      "reciprocal_rank": 1.0,
+      "retrieved": 10,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A empresa começou com dois caminhões alugados.",
+      "seconds": 0.5243436000000656
+    },
+    {
+      "question": "Que tipo de cliente fechou o primeiro contrato da empresa?",
       "expected_route": "vectorial",
       "actual_route": "vectorial",
       "route_ok": true,
@@ -216,25 +235,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "A empresa começou com dois caminhões alugados. Isso ocorreu em 2011, quando a Meridiano Logística foi fundada em uma sala alugada em Belém.",
-      "seconds": 0.9542145999985223
-    },
-    {
-      "question": "Que tipo de cliente fechou o primeiro contrato da empresa?",
-      "expected_route": "vectorial",
-      "actual_route": "vectorial",
-      "route_ok": true,
-      "recall": {
-        "1": 0.0,
-        "5": 1.0,
-        "10": 1.0
-      },
-      "reciprocal_rank": 0.3333333333333333,
-      "retrieved": 10,
-      "facts_ok": true,
-      "missing_facts": [],
-      "answer": "O primeiro contrato da empresa foi fechado com uma rede de farmácias local. A empresa nasceu em 2011 com um contrato de entrega para esse cliente específico.",
-      "seconds": 0.9008930999989389
+      "answer": "O primeiro contrato da empresa foi fechado com uma rede de farmácias local.",
+      "seconds": 0.6117120999997496
     },
     {
       "question": "Qual era a formacao dos fundadores?",
@@ -250,8 +252,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "Os fundadores da Meridiano Logística eram dois engenheiros de produção.",
-      "seconds": 0.5628677000004245
+      "answer": "Os fundadores da Meridiano Logística eram dois engenheiros de produção. Eles haviam trabalhado juntos anteriormente numa transportadora que faliu.",
+      "seconds": 0.6706843000001754
     },
     {
       "question": "O que cada caminhao recebeu quando a empresa investiu em rastreamento?",
@@ -259,16 +261,18 @@
       "actual_route": "vectorial",
       "route_ok": true,
       "recall": {
-        "1": 1.0,
-        "5": 1.0,
-        "10": 1.0
+        "1": 0.0,
+        "5": 0.0,
+        "10": 0.0
       },
-      "reciprocal_rank": 1.0,
+      "reciprocal_rank": 0.0,
       "retrieved": 10,
-      "facts_ok": true,
-      "missing_facts": [],
-      "answer": "Cada caminhão recebeu um terminal.",
-      "seconds": 0.6021752999986347
+      "facts_ok": false,
+      "missing_facts": [
+        "terminal"
+      ],
+      "answer": "O contexto não fornece informações sobre o que cada caminhão recebeu quando a empresa investiu em rastreamento.",
+      "seconds": 0.6655532000004314
     },
     {
       "question": "Quantos fusos operacionais a empresa passou a operar depois de 2018?",
@@ -285,7 +289,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "Depois de 2018, a empresa passou a operar dois fusos operacionais distintos ao mesmo tempo. Isso ocorreu com a abertura do centro de distribuição de Recife, que foi a primeira operação fora da região Norte.",
-      "seconds": 1.0511416999997891
+      "seconds": 1.047787900000003
     },
     {
       "question": "Quanto tempo a reconciliacao mensal consumia antes do Sistema Atlas?",
@@ -303,8 +307,8 @@
       "missing_facts": [
         "uma semana"
       ],
-      "answer": "O contexto não fornece informações sobre reconciliação mensal nem sobre o tempo que ela consumia antes do Sistema Atlas.",
-      "seconds": 0.9584117000013066
+      "answer": "O contexto não fornece informações sobre o tempo de reconciliação mensal nem sobre quando ela ocorre em relação ao Sistema Atlas.",
+      "seconds": 0.9899283999993713
     },
     {
       "question": "Como as decisoes operacionais sao tomadas na empresa?",
@@ -320,8 +324,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "As decisões operacionais são tomadas o mais próximo possível de quem executa o trabalho. Todo processo novo precisa ser documentado cabendo numa página.",
-      "seconds": 0.8183649999991758
+      "answer": "As decisões operacionais são tomadas o mais próximo possível de quem executa. Todo processo novo precisa ser documentado cabendo numa página.",
+      "seconds": 0.8042771000000357
     },
     {
       "question": "Descreva o que a empresa faz com um processo novo antes de escalar.",
@@ -333,12 +337,12 @@
         "5": 1.0,
         "10": 1.0
       },
-      "reciprocal_rank": 0.3333333333333333,
+      "reciprocal_rank": 0.5,
       "retrieved": 10,
       "facts_ok": null,
       "missing_facts": [],
-      "answer": "A empresa testa processos novos na operação do Norte antes de escalar. A cultura interna exige que todo processo novo caiba numa página.",
-      "seconds": 0.7998576999998477
+      "answer": "A empresa testa processos novos na região do Norte antes de escalá-los. Essa região funciona como um laboratório onde as inovações são validadas. A decisão de escalar depende de que o processo caiba numa página.",
+      "seconds": 1.0362066999996387
     },
     {
       "question": "Explique o que o atendente deve dizer sobre a previsao de chegada da carga.",
@@ -354,8 +358,8 @@
       "retrieved": 10,
       "facts_ok": null,
       "missing_facts": [],
-      "answer": "O atendente deve informar a cidade em que a carga está e a previsão de chegada com data. Se a previsão mudou desde o último contato, ele deve comunicar a alteração e o motivo antes que o cliente pergunte. A frase \"está a caminho\" nunca deve ser usada, pois não fornece informações úteis.",
-      "seconds": 1.2283150999992358
+      "answer": "O atendente deve informar a cidade onde a carga está e a previsão de chegada com data. Se a previsão mudou desde o último contato, ele deve comunicar a alteração e o motivo antes que o cliente pergunte. A frase \"está a caminho\" nunca deve ser usada, pois não fornece informações úteis.",
+      "seconds": 1.2450218000003588
     },
     {
       "question": "Qual a diferenca entre um atraso comunicado e um atraso descoberto?",
@@ -371,8 +375,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "Um atraso comunicado é um problema, enquanto um atraso descoberto é uma quebra de confiança. O texto enfatiza que comunicar proativamente a mudança na previsão evita que o cliente descubra o atraso por conta própria.",
-      "seconds": 0.9912141999993764
+      "answer": "Um atraso comunicado é um problema, enquanto um atraso descoberto é uma quebra de confiança. O texto enfatiza que comunicar proativamente a mudança na previsão evita que o cliente descubra o atraso por si mesmo.",
+      "seconds": 0.9972966000004817
     },
     {
       "question": "Quais termos internos o atendente nao deve usar com o cliente?",
@@ -389,7 +393,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "O atendente não deve usar termos como \"romaneio\", \"cross-docking\" ou \"janela de coleta\", pois o cliente não sabe o que são. O uso desses termos transfere ao cliente o trabalho de traduzir o jargão interno.",
-      "seconds": 1.136044499999116
+      "seconds": 1.02480259999993
     },
     {
       "question": "O que fazer com uma reclamacao quando o cliente esta errado sobre a causa?",
@@ -405,8 +409,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "Registre a reclamação mesmo quando o cliente estiver errado sobre a causa, pois o incômodo dele é real independentemente do diagnóstico. Nunca discuta a interpretação antes de reconhecer o incômodo, resolvendo primeiro e explicando depois se ele quiser.",
-      "seconds": 1.0597933000008197
+      "answer": "Registre a reclamação mesmo quando o cliente estiver errado sobre a causa, porque o incômodo dele é real. Nunca discuta a interpretação antes de reconhecer o incômodo. Resolva o problema primeiro e explique depois, se o cliente quiser.",
+      "seconds": 1.0486624999994092
     },
     {
       "question": "Quem precisa aprovar uma compra de setenta mil reais?",
@@ -423,7 +427,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "Uma compra de setenta mil reais exige aprovação prévia da Diretoria Financeira, pois o valor ultrapassa o limite de cinquenta mil reais estabelecido na Política PC-04.",
-      "seconds": 1.0343931000006705
+      "seconds": 1.0265354000002844
     },
     {
       "question": "Uma compra de quinze mil reais pode ser aprovada por quem?",
@@ -440,7 +444,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "Uma compra de quinze mil reais pode ser aprovada pelo Gerente de Suprimentos, pois o valor está entre dez mil e cinquenta mil reais. Compras abaixo de dez mil reais dispensam aprovação formal, mas o valor de quinze mil reais exige aprovação.",
-      "seconds": 1.092328800001269
+      "seconds": 1.1420989999996891
     },
     {
       "question": "Uma compra de cinco mil reais exige aprovacao formal?",
@@ -457,7 +461,7 @@
       "facts_ok": null,
       "missing_facts": [],
       "answer": "Não, uma compra de cinco mil reais não exige aprovação formal, pois compras abaixo de dez mil reais dispensam aprovação formal.",
-      "seconds": 0.8027032000009058
+      "seconds": 0.8380381999995734
     },
     {
       "question": "Por que a Politica PC-09 foi criada?",
@@ -474,7 +478,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A Política PC-09 foi criada após o incidente de faturamento duplicado de 2025.",
-      "seconds": 0.9375259000007645
+      "seconds": 0.8780683000004501
     },
     {
       "question": "Um pedido processado pelo Sistema Atlas precisa de quantas aprovacoes antes do faturamento?",
@@ -488,12 +492,10 @@
       },
       "reciprocal_rank": 0.5,
       "retrieved": 10,
-      "facts_ok": false,
-      "missing_facts": [
-        "dupla"
-      ],
-      "answer": "Um pedido processado pelo Sistema Atlas precisa de duas aprovações antes do faturamento: uma do Gerente Regional e outra da Diretoria de Operações. Isso é exigido pela Política PC-09, que trata especificamente dos pedidos originados na região Norte.",
-      "seconds": 1.2657985000005283
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "Um pedido processado pelo Sistema Atlas precisa de duas aprovações antes do faturamento. Isso é exigido pela Política PC-09, que trata especificamente dos pedidos da região Norte. A dupla aprovação envolve o Gerente Regional e a Diretoria de Operações.",
+      "seconds": 1.2416712000003827
     },
     {
       "question": "Qual politica o Contrato Marco 2026 segue integralmente?",
@@ -510,7 +512,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "O Contrato Marco 2026 segue integralmente a Política PC-04.",
-      "seconds": 0.7478416999983892
+      "seconds": 0.756922399999894
     },
     {
       "question": "Qual certificacao um fornecedor precisa ter para ser homologado?",
@@ -526,8 +528,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "Um fornecedor precisa ter uma Certificação ISO 9001 válida para ser homologado. O Fornecedor Vega perdeu essa certificação em fevereiro, o que levou à revisão pelo Comitê de Riscos. A homologação depende estritamente da validade dessa certificação.",
-      "seconds": 1.4113924000012048
+      "answer": "Um fornecedor precisa ter uma Certificação ISO 9001 válida para ser homologado. O Fornecedor Vega perdeu essa certificação em fevereiro, o que levou à revisão pelo Comitê de Riscos.",
+      "seconds": 1.1794287000002441
     },
     {
       "question": "O que acontece quando um fornecedor perde a certificacao?",
@@ -544,7 +546,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "O Comitê de Riscos revisa o fornecedor e pode suspender o Contrato Marco 2026.",
-      "seconds": 0.8793776000002254
+      "seconds": 0.9340988000003563
     },
     {
       "question": "Qual o prazo maximo de retencao que a Norma NC-11 determina?",
@@ -561,7 +563,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A Norma NC-11 determina um prazo máximo de retenção de vinte e quatro meses.",
-      "seconds": 0.8006664000004093
+      "seconds": 0.8519421000000875
     },
     {
       "question": "Registros financeiros podem ser anonimizados?",
@@ -569,16 +571,16 @@
       "actual_route": "graph",
       "route_ok": true,
       "recall": {
-        "1": 0.0,
+        "1": 1.0,
         "5": 1.0,
         "10": 1.0
       },
-      "reciprocal_rank": 0.5,
+      "reciprocal_rank": 1.0,
       "retrieved": 10,
       "facts_ok": null,
       "missing_facts": [],
-      "answer": "Não, registros financeiros não podem ser anonimizados. A Norma NC-14 estabelece que os registros cobertos por ela não podem ser anonimizados.",
-      "seconds": 0.8902789000003395
+      "answer": "Não, registros financeiros não podem ser anonimizados. A Norma NC-14 estabelece que os registros cobertos por essa norma não podem ser anonimizados.",
+      "seconds": 0.9910122000001138
     },
     {
       "question": "Com que frequencia a conformidade com a Norma NC-11 e auditada?",
@@ -595,7 +597,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A conformidade com a Norma NC-11 é auditada a cada trimestre pelo Comitê de Riscos.",
-      "seconds": 0.8332446000003983
+      "seconds": 0.8601730999998836
     },
     {
       "question": "Em quanto tempo um incidente grave precisa ser reportado?",
@@ -613,8 +615,8 @@
       "missing_facts": [
         "vinte e quatro horas"
       ],
-      "answer": "O contexto não informa sobre o tempo limite para reportar incidentes graves.",
-      "seconds": 0.6647684999988996
+      "answer": "O contexto não informa em quanto tempo um incidente grave precisa ser reportado.",
+      "seconds": 0.6257168000001911
     },
     {
       "question": "Que tipo de dado o Sistema Atlas armazena?",
@@ -631,7 +633,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "O Sistema Atlas armazena dados pessoais de clientes.",
-      "seconds": 0.6636063000005379
+      "seconds": 0.6656047000005856
     },
     {
       "question": "Para qual banco o Banco de Dados Orion replica?",
@@ -648,7 +650,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "O Banco de Dados Órion replica para o Banco de Dados Vesta.",
-      "seconds": 0.7706202999997913
+      "seconds": 0.7831317999998646
     },
     {
       "question": "Com que frequencia o Banco de Dados Orion replica?",
@@ -665,7 +667,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "O Banco de Dados Órion replica para o Banco de Dados Vesta a cada seis horas.",
-      "seconds": 0.8111848999997164
+      "seconds": 0.8442900000000009
     },
     {
       "question": "Se o Gateway Iris falhar, qual sistema para de funcionar?",
@@ -682,7 +684,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "O Sistema Helios para de funcionar, pois ele depende do Gateway Íris para autorizar transações. Uma falha nesse gateway interrompe todos os pagamentos processados pelo Sistema Helios.",
-      "seconds": 0.9800922000013088
+      "seconds": 1.0006222000001799
     }
   ]
 }
