@@ -67,10 +67,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The screenshot check compares commit timestamps across paths, which
+          # needs history. The default shallow clone has exactly one commit.
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Check the README screenshots
+        # Regenerating them here is not possible: scripts/screenshots.py needs
+        # three llama-servers, Qdrant, the backend and a dev server, which is
+        # ~4.5 GB of weights on a GPU the runner does not have. This checks the
+        # two things that can be checked without running any of it -- that every
+        # reference resolves both ways, and that the images are not older than
+        # the interface, corpus and config they depict.
+        #
+        # Both failures are real history here. The Corpus view kept showing a
+        # chunk distribution a later re-ingestion had changed, and a Telemetry
+        # shot sat committed for weeks without ever being referenced.
+        run: uv run --no-project python scripts/check_screenshots.py
 
       - name: Render every Mermaid diagram
         # The architecture diagram shipped broken and nobody noticed: "graph" is
