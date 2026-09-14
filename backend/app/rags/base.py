@@ -37,6 +37,20 @@ class RAGBase(ABC):
     async def stats(self) -> dict[str, Any]:
         """What this backend currently holds. Each store counts different things."""
 
+    async def forget(self, ids: list[str]) -> None:
+        """Removes previously ingested chunks by their content id.
+
+        Exists so a file can be corrected. Until this, "already ingested" meant
+        "a file with this name reached the archive", so fixing a typo in a
+        document required renaming it, and re-dropping it under the same name did
+        nothing at all.
+
+        Not abstract: the relational store has nothing to do here, because a table
+        is written with `if_exists="replace"` under a name derived from the file,
+        so re-ingesting the same file overwrites it by construction.
+        """
+        return None
+
     async def content_anchors(self) -> list[str]:
         """Short phrases describing what this store actually holds, for the router.
 

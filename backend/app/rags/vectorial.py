@@ -41,6 +41,13 @@ class VectorialRAG(RAGBase):
             points=[PointStruct(id=content_id(content), vector=vector, payload={"text": content})],
         )
 
+    async def forget(self, ids: list[str]) -> None:
+        # The ids ARE the point ids: both come from content_id(text), which is
+        # what makes re-ingesting a chunk an overwrite rather than a duplicate.
+        collection = self._settings.qdrant.collection
+        if ids and await self._client.collection_exists(collection):
+            await self._client.delete(collection_name=collection, points_selector=ids)
+
     async def stats(self) -> dict:
         collection = self._settings.qdrant.collection
         if not await self._client.collection_exists(collection):
