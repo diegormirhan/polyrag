@@ -78,8 +78,16 @@ def section_headings(texts: Iterable[str]) -> list[str]:
     headings = set()
     for text in texts:
         first = text.split("\n", 1)[0].strip()
-        # A bare "# Title" line is a document title, not a section.
-        if not first or first.startswith("#"):
+        # A trail with no separator is the document's own title and nothing more:
+        # the file had no sections, so the deepest level IS the cover. Keeping it
+        # was measured costing two golden-set questions. `sobre_a_meridiano.md` has
+        # a single `# Sobre a Meridiano Logistica` and no subheadings, so one of its
+        # paragraphs landing in the graph taught the router that the graph holds
+        # "Sobre a Meridiano Logistica" -- and every question naming the company
+        # went there, including "em que ano a Meridiano Logistica foi fundada",
+        # whose answer sits in the vector store. A title names a file, not a
+        # subject, which is what this function's second line already said.
+        if not first or first.startswith("#") or TRAIL_SEPARATOR not in first:
             continue
         headings.add(first.split(TRAIL_SEPARATOR)[-1].strip())
     return sorted(h for h in headings if h)
@@ -94,6 +102,10 @@ class GraphRAG(RAGBase):
         self._settings = settings
         self._store_path = Path(settings.paths.graph_store)
         self._store_path.parent.mkdir(parents=True, exist_ok=True)
+        # Entity names and chunk texts are immutable once stored -- a chunk's node
+        # id is a hash of its own text -- so their vectors never go stale. See
+        # _embed_with_cache for why this matters.
+        self._known_vectors: dict[str, list[float]] = {}
 
     @classmethod
     def load(cls, clients: LlamaClients, settings: Settings | None = None) -> GraphRAG:
@@ -141,6 +153,33 @@ class GraphRAG(RAGBase):
         self.save()
         return True
 
+    async def forget(self, ids: list[str]) -> None:
+        """Drops the chunk nodes, and any entity that existed only to reach them.
+
+        An entity left with no chunk to point at is not a smaller graph, it is a
+        seed the walk can land on that leads nowhere -- so it goes with the chunk.
+        An entity still mentioned by another chunk stays, which is the whole reason
+        the check is per-node rather than a blanket delete of the triples.
+        """
+        removed = [node for node in (f"chunk_{chunk_id}" for chunk_id in ids) if node in self._graph]
+        # Read before the node goes: the vector cache is keyed by the chunk's text,
+        # which only the node knows.
+        texts = [self._graph.nodes[node]["text"] for node in removed]
+        self._graph.remove_nodes_from(removed)
+        orphans = [
+            node
+            for node, data in self._graph.nodes(data=True)
+            if data.get("kind") == "entity"
+            and not any(
+                self._graph.nodes[neighbour].get("kind") == "chunk"
+                for neighbour in self._graph.successors(node)
+            )
+        ]
+        self._graph.remove_nodes_from(orphans)
+        for key in [*texts, *orphans]:
+            self._known_vectors.pop(key, None)
+        self.save()
+
     async def stats(self) -> dict:
         kinds = [data.get("kind") for _, data in self._graph.nodes(data=True)]
         relations = sum(
@@ -159,6 +198,32 @@ class GraphRAG(RAGBase):
 
     def _entities(self) -> list[str]:
         return [n for n, d in self._graph.nodes(data=True) if d.get("kind") == "entity"]
+
+    async def _embed_with_cache(
+        self, question: str, texts: list[str]
+    ) -> tuple[list[float], list[list[float]]]:
+        """Unit vectors for the question and for `texts`, embedding each text once ever.
+
+        Both graph steps compare the question against something the store already
+        holds, and the store's side does not change between questions. Embedding it
+        again every time was the single most expensive thing on the graph route:
+        `rag.graph.seeds` spent ~100 ms of a ~160 ms route re-deriving the same 51
+        entity vectors, and the cost grew with the corpus -- it had been 76 ms at 40
+        entities. The span attribute `graph.embedded` is what makes the growth
+        visible, so a regression here shows up instead of being inferred.
+
+        The question is deliberately not cached: it is different every time, and a
+        dict of every question ever asked would grow without a bound.
+        """
+        missing = [text for text in texts if text not in self._known_vectors]
+        trace.get_current_span().set_attribute("graph.embedded", len(missing))
+        # One call, not two: the question rides along with whatever is missing.
+        fresh = await embed(self._clients.embeddings, [question, *missing])
+        question_vector = normalize(fresh[0])
+        self._known_vectors.update(
+            zip(missing, (normalize(v) for v in fresh[1:]), strict=True)
+        )
+        return question_vector, [self._known_vectors[text] for text in texts]
 
     async def _seed_entities(self, question: str) -> dict[str, float]:
         """The nodes to start the walk from, and how hard each one pulls.
@@ -192,8 +257,7 @@ class GraphRAG(RAGBase):
                 return {}
 
             cfg = self._settings.rags.graph
-            raw = await embed(self._clients.embeddings, [question, *graph_entities])
-            question_vector, *entity_vectors = [normalize(v) for v in raw]
+            question_vector, entity_vectors = await self._embed_with_cache(question, graph_entities)
 
             pairs = zip(graph_entities, entity_vectors, strict=True)
             scored = sorted(((dot(question_vector, v), name) for name, v in pairs), reverse=True)
@@ -265,8 +329,7 @@ class GraphRAG(RAGBase):
         """
         with _tracer.start_as_current_span("rag.graph.fuse") as span:
             texts = [self._graph.nodes[node]["text"] for node in chunk_ids]
-            vectors = [normalize(v) for v in await embed(self._clients.embeddings, [question, *texts])]
-            question_vector, chunk_vectors = vectors[0], vectors[1:]
+            question_vector, chunk_vectors = await self._embed_with_cache(question, texts)
 
             similarity = {
                 node: dot(question_vector, vector)
