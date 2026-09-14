@@ -16,12 +16,9 @@ removed at the end -- so the demo corpus is exactly as it was.
 
 import asyncio
 import json
-import sys
 from pathlib import Path
 
-# pyproject's `pythonpath = ["backend"]` is read by pytest, and this script is
-# meant to be run directly, so it puts the package on the path itself.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
+import _bootstrap  # noqa: F401  # puts backend/ on sys.path; must precede `app`
 
 from app.core.config import load_config
 from app.core.llama_client import LlamaClients

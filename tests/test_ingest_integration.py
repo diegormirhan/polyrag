@@ -11,6 +11,8 @@ finds nothing — that is the expected behaviour, not a failure.
 import asyncio
 from collections import Counter
 
+import _bootstrap  # noqa: F401  # puts backend/ on sys.path; must precede `app`
+
 from app.core.llama_client import LlamaClients
 from app.ingest.watcher import Watcher
 from app.pipeline.ingestor import Ingestor

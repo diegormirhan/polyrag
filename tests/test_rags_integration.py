@@ -1,5 +1,6 @@
 import asyncio
 
+import _bootstrap  # noqa: F401  # puts backend/ on sys.path; must precede `app`
 import pandas as pd
 
 from app.core.llama_client import LlamaClients

@@ -1,5 +1,7 @@
 import asyncio
 
+import _bootstrap  # noqa: F401  # puts backend/ on sys.path; must precede `app`
+
 from app.core.llama_client import LlamaClients
 from app.rags.graph import GraphRAG
 

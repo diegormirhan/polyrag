@@ -7,6 +7,8 @@ llama-servers and Qdrant up, against bases that already have data ingested.
 
 import asyncio
 
+import _bootstrap  # noqa: F401  # puts backend/ on sys.path; must precede `app`
+
 from app.core.config import load_config
 from app.core.llama_client import LlamaClients
 from app.core.telemetry import LiveSpanExporter, setup_telemetry
