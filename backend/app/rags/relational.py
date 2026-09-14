@@ -141,6 +141,35 @@ class RelationalRAG(RAGBase):
             ]
         return {"tables": tables}
 
+    async def content_anchors(self) -> list[str]:
+        """What this store holds, in its own words: one phrase per table.
+
+        The other two stores declare their section headings, and for a while this
+        one declared nothing. That was not neutral -- it made the gray zone a
+        two-way contest that `relational` could not enter. "Qual foi a receita do
+        mes de marco" is the case that exposed it: the graph offers the heading
+        "Contratos marco", *marco* the contract normalises to *marco* the month,
+        and the sales table -- which has a `receita` column and is the only thing
+        in the corpus that could answer -- had nothing to say for itself.
+
+        A table name plus its column names is the closest thing a relational store
+        has to a heading, and it costs one sqlite_master read at startup.
+        """
+        with sqlite3.connect(self._db_path) as conn:
+            tables = [
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                )
+            ]
+            # Underscores are not a word separator to an embedding model, so the
+            # table name is spelled out before it is compared against prose.
+            return [
+                f"{table.replace('_', ' ')}: "
+                + ", ".join(row[1].replace("_", " ") for row in conn.execute(f'PRAGMA table_info("{table}")'))
+                for table in tables
+            ]
+
     async def generate_sql(self, question: str) -> str:
         prompt = self._settings.rags.relational.text_to_sql_prompt.format(
             schema=self.schema(),
