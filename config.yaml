@@ -181,6 +181,14 @@ orchestrator:
     - Answer directly, in at most 3 sentences. No preamble, no numbered reasoning
       steps, no restating the question, no "based on the context" framing.
     - Use only facts present in the context. Never invent data.
+    - The context may arrive as several labelled blocks ([SQL], [TEXT], [GRAPH]).
+      That happens when the message asked more than one question, and each block
+      answers a different one. Answer every part you can, taking each from
+      whichever block holds it. Say the context does not answer only when NO
+      block does. (Measured: without this the model read a context whose [SQL]
+      block contained the figure it was asked for and replied that the context
+      provided no such information, because the [TEXT] block beside it was about
+      something else.)
     - If the context does not answer the question, say so plainly.
     - Keep any table in Markdown format.
 
