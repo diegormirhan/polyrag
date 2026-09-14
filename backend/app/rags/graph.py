@@ -220,9 +220,7 @@ class GraphRAG(RAGBase):
         # One call, not two: the question rides along with whatever is missing.
         fresh = await embed(self._clients.embeddings, [question, *missing])
         question_vector = normalize(fresh[0])
-        self._known_vectors.update(
-            zip(missing, (normalize(v) for v in fresh[1:]), strict=True)
-        )
+        self._known_vectors.update(zip(missing, (normalize(v) for v in fresh[1:]), strict=True))
         return question_vector, [self._known_vectors[text] for text in texts]
 
     async def _seed_entities(self, question: str) -> dict[str, float]:

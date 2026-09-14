@@ -198,14 +198,8 @@ class Orchestrator:
             # and they do not wait on each other. For the usual single-route
             # message this is one coroutine and behaves exactly as it always did.
             asks = decision.asks or ((question, decision.route),)
-            gathered = await asyncio.gather(
-                *(self._retrieve(route, asked, top_k) for asked, route in asks)
-            )
-            found = [
-                (route, results)
-                for (_, route), results in zip(asks, gathered, strict=True)
-                if results
-            ]
+            gathered = await asyncio.gather(*(self._retrieve(route, asked, top_k) for asked, route in asks))
+            found = [(route, results) for (_, route), results in zip(asks, gathered, strict=True) if results]
 
             # A store that finds nothing hands the question over instead of giving
             # up. The same fallback the ingestor uses, for the same reason: the
@@ -215,9 +209,7 @@ class Orchestrator:
             # in the vector store. Deterministic and bounded -- one extra lookup,
             # only when every consulted store returned nothing, and never a loop back.
             if not found and FALLBACK_ROUTE not in decision.routes:
-                fallback = await self._retrieve(
-                    FALLBACK_ROUTE, question, top_k, fallback_from=decision.route
-                )
+                fallback = await self._retrieve(FALLBACK_ROUTE, question, top_k, fallback_from=decision.route)
                 if fallback:
                     found = [(FALLBACK_ROUTE, fallback)]
 

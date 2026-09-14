@@ -83,11 +83,7 @@ class Watcher:
     def _candidates(self) -> list[Path]:
         data_drop = Path(self._settings.paths.data_drop)
         ingested = self._ingested_digests()
-        return [
-            path
-            for path in data_drop.glob("*")
-            if path.is_file() and file_digest(path) not in ingested
-        ]
+        return [path for path in data_drop.glob("*") if path.is_file() and file_digest(path) not in ingested]
 
     async def poll_once(self) -> list[IngestFile]:
         # One check-cycle, no waiting/looping inside — kept separate from watch()

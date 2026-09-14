@@ -24,7 +24,7 @@ def test_english_compound_is_split():
 
 
 def test_e_as_the_verb_does_not_split():
-    """"Uma exportacao ... e reportada" — the "e" is the verb *é*, written unaccented.
+    """ "Uma exportacao ... e reportada" — the "e" is the verb *é*, written unaccented.
 
     One of the two false positives the interrogative test was added to remove: the
     first half asks nothing, so the message is one question that happens to contain
