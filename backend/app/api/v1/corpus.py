@@ -39,7 +39,10 @@ async def corpus(
                 name=path.name,
                 size_bytes=path.stat().st_size,
                 ingested_at=path.stat().st_mtime,
-                **manifest.get(path.name, {}),
+                # The manifest records (route, chunk id) pairs, because the ids are
+                # what a re-ingestion needs in order to remove the old version.
+                # The view only ever wanted the routes.
+                routes=[route for route, _ in manifest.get(path.name, {}).get("stored", [])],
             )
             for path in processed.glob("*")
             if path.is_file()

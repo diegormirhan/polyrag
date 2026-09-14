@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class ChatRequest(BaseModel):
@@ -16,6 +16,9 @@ class ChatResponse(BaseModel):
     sources: list[Any]
     # All null on a cache hit: the answer came from RAM, so no routing happened.
     route: str | None = None
+    # Every store consulted, primary first. Longer than one element only when the
+    # message asked more than one question — see pipeline/clauses.py.
+    routes: list[str] = Field(default_factory=list)
     decision_stage: str | None = None
     margin: float | None = None
     scores: dict[str, float] = Field(default_factory=dict)
@@ -60,8 +63,14 @@ class CorpusFile(BaseModel):
     name: str
     size_bytes: int
     ingested_at: float  # epoch seconds, from the file's mtime in data/processed
-    chunks: int = 0
     routes: list[str] = Field(default_factory=list)  # where each chunk actually landed
+
+    @computed_field
+    @property
+    def chunks(self) -> int:
+        # Derived, not stored: `routes` already has one entry per chunk, and two
+        # fields that must agree are one field too many.
+        return len(self.routes)
 
 
 class CorpusResponse(BaseModel):
