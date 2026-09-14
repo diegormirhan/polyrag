@@ -38,7 +38,7 @@ Runs entirely on one machine: AMD GPU through Vulkan, no CUDA, no Docker, no clo
 
 *A question whose answer spans two documents that never mention each other. The right panel is the
 whole point: the score each route got, the margin that decided it, and every step with its own
-latency, `rag.graph.pagerank` at 1 ms next to `chat.stream` at 621 ms.*
+latency, `rag.graph.pagerank` at 1 ms next to `chat.stream` at 588 ms.*
 
 *The question is English and the corpus is Portuguese. Routing, retrieval and the answer all work
 across the two because BGE-M3 embeds both into the same space; the sources are shown in the language
@@ -133,7 +133,7 @@ score_top1 < tau_low                          →  fall back to free text
 otherwise                                     →  gray zone, go to stage 3
 ```
 
-This is a 1-nearest-neighbour classifier with a rejection rule. Cost: **8.8 ms**, measured.
+This is a 1-nearest-neighbour classifier with a rejection rule. Cost: **9.3 ms**, measured.
 
 **3 · Store evidence.** Only in the gray zone. The configured phrases say what a route is *for*;
 they cannot know what a corpus turned out to contain. So each store is asked for the section
@@ -178,9 +178,11 @@ testable rather than hidden behind an import.
 
 ![The Corpus view: what was ingested and which store each chunk landed in](docs/screenshots/corpus.png)
 
-*Routing is per chunk, not per file — which is why `normas_dados.md` shows up in two stores. The
-router sent three of its chunks to the graph; the fourth had no extractable relation, so it fell
-back to free text rather than being dropped.*
+*Routing is per chunk, not per file, which is why four of the six files show up in two stores. The
+row worth looking at is `sobre_a_meridiano.md`: one of its five paragraphs sits close enough to the
+routing boundary that rewording a route anchor moved it into the graph, and three questions that
+depended on it lost their answer. The split is also where the ingestion fallback shows: a chunk the
+graph could extract no relation from is kept as free text rather than dropped.*
 
 ---
 
@@ -193,18 +195,23 @@ p50 and p95 rather than an average.
 
 | | p50 | p95 |
 |---|---:|---:|
-| Routing decision (deterministic stage) | **8.8 ms** | 9.7 ms |
+| Routing decision (deterministic stage) | **9.3 ms** | 11.5 ms |
 | Routing decision on the wire, streaming | **39 ms** | 65 ms |
-| Time to first token | **223 ms** | 267 ms |
-| Full answer, vectorial | **632 ms** | 632 ms |
-| Full answer, relational | **737 ms** | 743 ms |
-| Full answer, graph | **822 ms** | 827 ms |
-| Cache hit, same question | **9.3 ms** | 9.5 ms |
-| Share of a request spent inside model calls | **99 %** | |
+| Time to first token | **249 ms** | 286 ms |
+| Full answer, vectorial | **393 ms** | 414 ms |
+| Full answer, relational | **764 ms** | 781 ms |
+| Full answer, graph | **986 ms** | 1033 ms |
+| Cache hit, same question | **9.3 ms** | 9.7 ms |
+| Share of a request spent inside model calls | **98 %** | |
 
 Per stage, from each request's own spans rather than a second set of timers:
-`pipeline.router` 8.8 ms, `rag.relational.generate_sql` 376 ms, `rag.graph.seeds` 76 ms,
-`rag.graph.fuse` 54 ms, `rag.graph.pagerank` 1.0 ms.
+`pipeline.router` 9.3 ms, `rag.relational.generate_sql` 389 ms, `rag.graph.seeds` 100 ms,
+`rag.graph.fuse` 60 ms, `rag.graph.pagerank` 1.0 ms.
+
+Two of those are worth reading together: **Personalized PageRank, the algorithm the graph route is
+named for, costs 1 ms — and finding the entities to seed it costs a hundred**, because entity
+vectors are recomputed on every query instead of at ingestion. That cost grows with the corpus: the
+same figure was 76 ms when the graph held 40 entities and is 100 ms at 51.
 
 Two of those are worth reading together: **Personalized PageRank, the algorithm the graph route is
 named for, costs 1 ms — and everything around it costs 130.** Retrieval is not where the time goes;
@@ -367,12 +374,12 @@ two documents that never mention each other.
 
 **The cache.** A question's embedding is compared against every cached question with FAISS
 `IndexFlatIP` — exact brute force by inner product, which is again cosine because the vectors are
-normalised. Above the threshold, the stored answer is returned in about 12 ms. The threshold is
+normalised. Above the threshold, the stored answer is returned in about 9 ms. The threshold is
 also the cache's open defect: see the limitations below.
 
 **Why this matters here.** These steps are pure functions over numbers, which is what makes them
 testable without a model server, reproducible across runs, and explainable after the fact. The
-router's decision is under 11 ms of arithmetic whose inputs the panel can show you. That is the
+router's decision is under 12 ms of arithmetic whose inputs the panel can show you. That is the
 whole argument.
 
 ---
@@ -467,7 +474,7 @@ retrieval has even finished.
 ![The same question asked twice: the second answer comes from the cache](docs/screenshots/chat-cache.png)
 
 *The same question, asked twice. The second answer skips routing, retrieval and generation
-entirely — three spans and 10 ms, against roughly 800 ms for the first.*
+entirely: three spans and 10 ms, against roughly a second for the first.*
 
 ![The Servers view: start and stop each model](docs/screenshots/servers.png)
 
@@ -491,7 +498,7 @@ npm --prefix frontend run dev
 Then ask, in order: a figure (`What was the total revenue of the Sudeste region?`), something
 narrative (`In what year was Meridiano Logistica founded?`), a chain that crosses two files (`Which
 approval policy do the orders processed by Sistema Atlas follow?`), and finally any of them a second
-time to watch the cache answer in 12 ms. The corpus is in Portuguese and the questions are in
+time to watch the cache answer in 9 ms. The corpus is in Portuguese and the questions are in
 English on purpose: routing and retrieval work across languages because BGE-M3 embeds both into one
 space, and the sources are shown untranslated. [`demo/README.md`](demo/README.md) has the full
 script, the expected figures, and the two questions that fail.
