@@ -141,7 +141,10 @@ def _score_retrieval(chunks: list[str], markers: list[str]) -> tuple[dict[int, f
 
 async def _evaluate(orchestrator: Orchestrator, case: dict[str, Any]) -> Outcome:
     question = case["question"]
-    expected = case["route"]
+    # `routes` (plural) is how a compound question says that several stores must
+    # all be consulted. For the single-question sets the two spellings are the
+    # same statement, so their numbers do not move.
+    expected = case.get("routes") or [case["route"]]
     started = time.perf_counter()
 
     # Cleared per question so a paraphrase of an earlier one cannot be served from
@@ -150,12 +153,15 @@ async def _evaluate(orchestrator: Orchestrator, case: dict[str, Any]) -> Outcome
     orchestrator.clear_cache()
     result = await orchestrator.answer(question)
     route = result.decision.route if result.decision else None
+    consulted = set(result.decision.routes) if result.decision else set()
 
     outcome = Outcome(
         question=question,
-        expected_route=expected,
-        actual_route=route,
-        route_ok=route == expected,
+        expected_route="+".join(expected),
+        actual_route="+".join(sorted(consulted)) or None,
+        # Every expected store had to be consulted. With one expected store and
+        # one consulted this is `route == expected`, unchanged.
+        route_ok=set(expected) <= consulted,
         answer=result.answer,
         seconds=time.perf_counter() - started,
     )
@@ -169,7 +175,10 @@ async def _evaluate(orchestrator: Orchestrator, case: dict[str, Any]) -> Outcome
     # orchestrator serves config's top_k; recall@10 needs ten. Measuring the
     # answer through the product's own path and the ranking through a deeper
     # query is worth one extra call per question.
-    if markers := case.get("relevant"):
+    # Only for single-store questions. A compound message retrieves each half from
+    # its own store with its own text, so there is no one ranked list to score --
+    # `facts` is what says whether both halves were answered.
+    if (markers := case.get("relevant")) and len(expected) == 1:
         store = orchestrator._rags[route] if route else None
         hits = await store.query(question, top_k=RETRIEVE_K) if store else []
         # Only chunk-shaped results carry text. A question misrouted to the

@@ -1,0 +1,71 @@
+# Compound questions — 10 messages that ask two things at once.
+#
+# WHY THIS FILE EXISTS
+#
+# golden_set.yaml and holdout_set.yaml both ask one question per entry, so
+# neither can measure the thing multi-route retrieval was built for. A feature
+# that no measurement can fail is not a measured feature.
+#
+# Each entry names the stores that must BOTH be consulted, and lists one fact
+# from each half of the message. A run that consults only one store still
+# produces an answer -- half an answer, confidently worded -- so `facts` is what
+# catches it: both facts have to appear, or the message was not fully answered.
+#
+# `routes` instead of `route` is the only schema difference. scripts/evaluate.py
+# reads it as "every one of these was consulted"; for the single-question sets
+# the two spellings mean exactly the same thing, so their numbers are unchanged.
+#
+# Figures were read from demo/, not recalled: revenue from the CSV, thresholds
+# and deadlines from the policy and data-norm documents.
+
+# --------------------------------------------------------------------------- #
+# relational + graph — a figure and a rule
+# --------------------------------------------------------------------------- #
+
+- question: Qual foi a receita total da regiao Sudeste e quem aprova uma compra de oitenta mil reais?
+  routes: [relational, graph]
+  facts: ["4.988.300", "Diretoria Financeira"]
+
+- question: Qual foi o faturamento do mes de janeiro e qual politica o Contrato Marco 2026 segue?
+  routes: [relational, graph]
+  facts: ["3.056.200", "PC-04"]
+
+- question: Qual regiao teve a maior receita e qual a retencao maxima que a Norma NC-11 determina?
+  routes: [relational, graph]
+  facts: ["Sudeste", "24"]
+
+- question: Quantas unidades de Armazenagem foram vendidas e qual certificacao um fornecedor precisa ter?
+  routes: [relational, graph]
+  facts: ["1.882", "ISO 9001"]
+
+- question: Qual foi a receita total de todas as regioes e em quanto tempo um incidente grave e reportado?
+  routes: [relational, graph]
+  facts: ["12.950.950", "24"]
+
+# --------------------------------------------------------------------------- #
+# vectorial + graph — a story and a rule
+# --------------------------------------------------------------------------- #
+
+- question: Em que ano a Meridiano Logistica foi fundada e quem pode suspender o Contrato Marco 2026?
+  routes: [vectorial, graph]
+  facts: ["2011", "Comite de Riscos"]
+
+- question: Com quantos caminhoes a empresa comecou e qual sistema processa os pedidos da regiao Norte?
+  routes: [vectorial, graph]
+  facts: ["2", "Sistema Atlas"]
+
+- question: O que o atendimento deve evitar no vocabulario e qual norma regula os dados pessoais?
+  routes: [vectorial, graph]
+  facts: ["jargao", "NC-11"]
+
+# --------------------------------------------------------------------------- #
+# relational + vectorial — a figure and a piece of prose
+# --------------------------------------------------------------------------- #
+
+- question: Qual mes teve o menor faturamento e o que o atendente nunca deve responder ao cliente?
+  routes: [relational, vectorial]
+  facts: ["janeiro", "a caminho"]
+
+- question: Qual produto gerou menos receita e o que dizer ao cliente que pergunta onde esta a carga?
+  routes: [relational, vectorial]
+  facts: ["Armazenagem", "previsao de chegada"]
