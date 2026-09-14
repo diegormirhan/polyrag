@@ -38,11 +38,17 @@ Where the 24 chunks land, from `GET /api/v1/corpus`:
 | File | Stored in |
 |---|---|
 | `vendas_2026_q1.csv` | relational 1 |
-| `sobre_a_meridiano.md` | vectorial 5 |
+| `sobre_a_meridiano.md` | vectorial 4, graph 1 |
 | `manual_atendimento.md` | vectorial 5 |
 | `politicas_compras.md` | graph 4, vectorial 1 |
 | `normas_dados.md` | graph 3, vectorial 1 |
 | `dependencias_sistemas.md` | graph 3, vectorial 1 |
+
+One paragraph of the company history sits in the graph, and it is the chunk the
+README's limitations section is about: it describes tracking terminals arriving at
+trucks, which reads as a relation, and it is close enough to the routing boundary
+that anchor edits move it. The three questions that need it lose recall in their
+own route when it is not in the vector store.
 
 Three chunks sit in the vector store despite being about rules. That is the
 ingestion fallback, not a routing miss: the router judges meaning, the graph
@@ -111,8 +117,16 @@ than a fact retrieved from one.
 
 Ask any of the above a second time. The panel says
 `Answered from the semantic cache. No routing, no retrieval, no model call.`
-and it returns in roughly **8 ms** against seconds for the full path. A
-paraphrase hits it too — the match is on the embedding, not the string.
+and it returns in roughly **9 ms** against seconds for the full path.
+
+A paraphrase does **not** hit it, and `scripts/benchmark.py` says so out loud:
+"Qual é a receita somada do Sudeste?" missed 12 times out of 12 against a cached
+"Qual foi a receita total da região Sudeste?". Two things have to agree for a hit
+— the embedding, and an exact comparison of the proper nouns, the figures and the
+number of questions asked — and here it is the embedding that falls short of 0.80.
+The second half of the check is why asking for the Sudeste revenue and then the
+Nordeste revenue no longer returns the first figure for the second question: those
+two score 0.917 against each other, comfortably over the line.
 
 ## What does not work, and why it is here
 

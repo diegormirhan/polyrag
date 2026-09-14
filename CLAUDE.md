@@ -401,36 +401,66 @@ Inspirado conceitualmente na lib `semantic-router` (https://semantic-router.read
 
 > **O mesmo componente serve os dois momentos:** na **ingestão** o input é o *conteúdo do chunk* ("onde guardo?"); na **busca** o input é a *pergunta do usuário* ("onde procuro?"). Mesmas âncoras, mesma matemática, uma engine só. É por isso que as frases-âncora do `config.yaml` são tão importantes: elas *treinam* o roteador sem escrever código.
 
-#### Perguntas compostas: roteamento multi-rota (fan-out + RRF)
-
-> ⚠️ **Desenho, não código: NADA disto existe na v0.1.0.** O roteador escolhe uma rota só.
-> Registrado aqui como projeto futuro — não citar como recurso do sistema.
+#### Perguntas compostas: roteamento multi-rota (fan-out)
 
 Algumas perguntas exigem dados de mais de uma base:
 
-> *"Qual foi o total de vendas em março, e isso fere alguma política de compliance?"*
-> → `total de vendas` está no **RAG 1 (SQL)** · `política de compliance` está no **RAG 3 (grafo)**
+> *"Qual foi a receita do mês de março e qual norma regula a retenção desses registros?"*
+> → `receita de março` está no **RAG 1 (SQL)** · `norma de retenção` está no **RAG 3 (grafo)**
+
+**Implementado — e o desenho original desta seção estava errado nas duas metades.**
+Fica registrado porque o motivo é o ponto mais interessante da funcionalidade.
+
+**1. O threshold `tau_multi` não detecta pergunta composta.** Medido nos dois
+conjuntos de avaliação mais 7 perguntas compostas escritas de propósito: compostas
+pontuam `top2` entre **0.365 e 0.511**, simples entre **0.303 e 0.476**. As faixas
+se sobrepõem quase inteiras — a pergunta simples *"Como uma reclamação de cliente
+deve ser tratada?"* tem `top2` = 0.476 e supera **cinco das sete** compostas. A
+causa é mecânica: o embedding de um texto com dois assuntos cai perto da **média**
+dos dois, então um segundo assunto **dilui os dois scores** em vez de levantar o
+segundo. Mesma forma de falha do threshold do cache: duas distribuições
+sobrepostas, nenhum corte separa.
+
+**2. O que separa é estrutura, não magnitude.** Uma mensagem composta contém duas
+perguntas. `backend/app/pipeline/clauses.py` corta nos limites de oração (`?`, `;`,
+`e`, `and`, `também`) e exige que **toda** parte sobrevivente contenha um
+interrogativo. Sem essa exigência, duas das 80 perguntas de avaliação se partiam
+errado: *"Uma exportação sem anonimização **e** reportada para quem?"* (o "e" é o
+verbo *é* sem acento) e *"Qual a diferença entre um atraso comunicado **e** um
+atraso descoberto?"* (o "e" liga dois substantivos). Nas duas, uma das metades não
+pergunta nada. Medido: **9/9 compostas detectadas, 0/80 falsos positivos**.
 
 **Procedimento (determinístico na decisão, paralelo na execução):**
 
-1. **Detectar que é composta** (regra matemática, mesmo princípio da margem):
-   - Se `top2 ≥ tau_multi` (novo threshold no config, ex: **0.5**) → ativa **fan-out** (consulta as top-N rotas).
-   - Na zona cinzenta, a evidência das bases devolveria **"quais rotas"**, não "qual rota".
-2. **Fan-out em paralelo:** `asyncio.gather` consulta as N rotas selecionadas; cada RAG retorna seus top-k com scores.
-3. **Fusão por Reciprocal Rank Fusion (RRF)** — matemática clássica de IR, **determinística** e que ignora a escala de cada base:
+1. **`question_clauses(mensagem)`** — um regex. Devolveu um fragmento? Nada muda,
+   e a mensagem simples não paga nada além do regex.
+2. **Cada fragmento é roteado pelos mesmos três estágios.** Se todos caem na mesma
+   base, continua sendo uma consulta só.
+3. **`asyncio.gather` consulta cada base com o texto da SUA pergunta**, não com a
+   mensagem inteira. Medido: entregar a mensagem toda ao Text-to-SQL dava ao
+   gerador uma frase que é metade pergunta de compliance, e a consulta resultante
+   era rejeitada pelos guardas — a metade relacional simplesmente não era respondida.
+4. **Os blocos são concatenados com rótulo de origem** `[SQL]` / `[TEXT]` /
+   `[GRAPH]`, e o `answer_prompt` explica que cada bloco responde a uma pergunta
+   diferente. Essa regra foi necessária: sem ela o modelo lia um contexto cujo
+   bloco `[SQL]` continha exatamente o número pedido e respondia *"o contexto não
+   fornece essa informação"*, porque o bloco `[TEXT]` ao lado era sobre outro assunto.
+5. **Span:** `router.routes=[relational, graph]`, `router.fan_out=true`, e um span
+   por base consultada. O CAG continua por mensagem inteira — e a chave do cache
+   inclui **quantas** perguntas foram feitas, porque *"A e B"* não é a mesma
+   mensagem que *"A"*.
 
-```
-score_final(chunk) = Σ [ 1 / (k + rank_na_rota) ]        k = 60 (constante clássica)
-                     rotas
+> **Por que NÃO RRF.** O desenho original fundia as rotas com Reciprocal Rank
+> Fusion. RRF funde dois *rankings dos mesmos itens* — é para isso que serve, e é
+> assim que ele é usado dentro da rota de grafo (PageRank × cosseno sobre os mesmos
+> chunks). Aqui as bases guardam conteúdos **disjuntos**, e uma delas devolve uma
+> tabela de resultado SQL em vez de uma lista ranqueada. Fundir por rank seria
+> inventar uma ordem entre coisas que nunca competiram entre si. Concatenar com
+> rótulo de origem é o que o problema pede.
 
-Ex: chunk rank #2 no SQL + rank #5 no grafo
-    → 1/(60+2) + 1/(60+5) = 0.0161 + 0.0154 = 0.0315
-```
-
-4. **LLM final sintetiza** o contexto multi-fonte com tags de origem (`[SQL]`, `[GRAFO]`) e cita as fontes.
-5. **Custo controlado:** fan-out só quando o threshold indicar; span registra `router.routes=[relational, graph]`, `router.fan_out=true` e um span por rota consultada. O CAG continua por pergunta inteira.
-
-> **Por que RRF e não somar os scores crus?** cada RAG pontua em escala diferente (SQL = valor agregado, Qdrant = cosseno, grafo = PageRank). Somar seria comparar bananas com laranjas; RRF usa só os **ranks**, tornando a fusão agnóstica de escala — e é pura aritmética (determinística, testável). Excelente ponto de entrevista.
+**Medido:** `eval/compound_set.yaml`, 10 mensagens compostas cobrindo os três pares
+de bases. Cada entrada lista um fato de **cada** metade, então responder só uma
+metade conta como erro.
 
 ### O CAG — Cache Semântico (Dia 4, no caminho de busca)
 
@@ -668,7 +698,7 @@ justifique**, seguindo o princípio de simplicidade (seção 0.0.1).
 | Técnica | O que resolve | Quando revisitar | Nota de confiança |
 |---|---|---|---|
 | Clarification Loop (validar coerência da pergunta antes de rotear) | Pergunta ambígua/inválida gasta pipeline à toa | Dia 4 (orquestrador) ou Dia 8 | Alta — barato (1 chamada de LLM) |
-| "Lost in the middle" (documentos mais relevantes no início/fim da janela de contexto, menos relevantes no meio) | LLMs prestam menos atenção ao meio de contextos longos (Liu et al. 2023) | Dia 4 (montagem do contexto final antes do LLM) | Alta — é só reordenar uma lista, custo ~0 |
+| ~~"Lost in the middle"~~ **FEITO** | LLMs prestam menos atenção ao meio de contextos longos (Liu et al. 2023) | — | `_edges_first` no orquestrador: os ranks 1,3,5 saem em ordem e 2,4 voltam invertidos, então `[1,2,3,4,5] → [1,3,5,4,2]` e o melhor abre o contexto enquanto o segundo melhor o fecha. Não se aplica a linhas de SQL, cuja ordem é o `ORDER BY` que as selecionou. Era mesmo só reordenar uma lista |
 | Recursive/semantic chunking (cortar por frase/parágrafo, ou por mudança semântica, em vez de contagem cega de caracteres) | Reduz corte de frase/ideia no meio | Dia 8 (hardening) | Média — semantic chunking exige embeddings *durante* a ingestão, mais infra que parece |
 | Parent-child chunking (indexar pedaço pequeno pra precisão de busca, devolver a seção/pai inteiro como contexto) | Equilibra precisão de retrieval com contexto completo pro LLM | Dia 3/4 (muda o schema de armazenamento do RAG 2) | Média — bom ganho, mas mexe na arquitetura de armazenamento |
 | Re-ranker (2º modelo reordena o top-k antes do LLM final) | Melhora ordenação além do score bruto de similaridade | Dia 4/8 | Baixa por enquanto — exigiria um 4º modelo/`llama-server` ou reaproveitar o Qwen3 (custo de infra real) |

@@ -1,0 +1,182 @@
+{
+  "summary": {
+    "overall": {
+      "questions": 10,
+      "router_accuracy": 0.9,
+      "recall@1": null,
+      "recall@5": null,
+      "recall@10": null,
+      "mrr": null,
+      "empty_retrieval": null,
+      "answer_facts": 0.9,
+      "seconds_avg": 1.3184622199998557
+    },
+    "relational+graph": {
+      "questions": 5,
+      "router_accuracy": 0.8,
+      "recall@1": null,
+      "recall@5": null,
+      "recall@10": null,
+      "mrr": null,
+      "empty_retrieval": null,
+      "answer_facts": 0.8,
+      "seconds_avg": 1.424418859999787
+    },
+    "relational+vectorial": {
+      "questions": 2,
+      "router_accuracy": 1.0,
+      "recall@1": null,
+      "recall@5": null,
+      "recall@10": null,
+      "mrr": null,
+      "empty_retrieval": null,
+      "answer_facts": 1.0,
+      "seconds_avg": 1.36853125000016
+    },
+    "vectorial+graph": {
+      "questions": 3,
+      "router_accuracy": 1.0,
+      "recall@1": null,
+      "recall@5": null,
+      "recall@10": null,
+      "mrr": null,
+      "empty_retrieval": null,
+      "answer_facts": 1.0,
+      "seconds_avg": 1.108488466666434
+    }
+  },
+  "questions": [
+    {
+      "question": "Qual foi a receita total da regiao Sudeste e quem aprova uma compra de oitenta mil reais?",
+      "expected_route": "relational+graph",
+      "actual_route": "graph+relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A receita total da região Sudeste foi de 4.988.300 reais. Uma compra de oitenta mil reais requer aprovação prévia da Diretoria Financeira, conforme a Política PC-04.",
+      "seconds": 1.5939426999993884
+    },
+    {
+      "question": "Qual foi o faturamento do mes de janeiro e qual politica o Contrato Marco 2026 segue?",
+      "expected_route": "relational+graph",
+      "actual_route": "graph+relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "O faturamento do mês de janeiro foi de 3.056.200 reais, e o Contrato Marco 2026 segue a Política PC-04.",
+      "seconds": 1.438635799999247
+    },
+    {
+      "question": "Qual regiao teve a maior receita e qual a retencao maxima que a Norma NC-11 determina?",
+      "expected_route": "relational+graph",
+      "actual_route": "graph+relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A região com a maior receita foi o Sudeste. A Norma NC-11 determina uma retenção máxima de vinte e quatro meses.",
+      "seconds": 1.2568616999997175
+    },
+    {
+      "question": "Quantas unidades de Armazenagem foram vendidas e qual certificacao um fornecedor precisa ter?",
+      "expected_route": "relational+graph",
+      "actual_route": "graph+relational",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "Foram vendidas 1882 unidades de Armazenagem. O fornecedor precisa ter uma Certificação ISO 9001 válida.",
+      "seconds": 1.3355853000011848
+    },
+    {
+      "question": "Qual foi a receita total de todas as regioes e em quanto tempo um incidente grave e reportado?",
+      "expected_route": "relational+graph",
+      "actual_route": "relational+vectorial",
+      "route_ok": false,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": false,
+      "missing_facts": [
+        "24"
+      ],
+      "answer": "A receita total de todas as regiões foi de 12.950.950, conforme o resultado da consulta SQL. O contexto não fornece informações sobre incidentes graves reportados nem sobre o tempo necessário para resolvê-los.",
+      "seconds": 1.497068799999397
+    },
+    {
+      "question": "Em que ano a Meridiano Logistica foi fundada e quem pode suspender o Contrato Marco 2026?",
+      "expected_route": "vectorial+graph",
+      "actual_route": "graph+vectorial",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A Meridiano Logística foi fundada em 2011. O Comitê de Riscos é a entidade que pode suspender o Contrato Marco 2026.",
+      "seconds": 1.1673025000000052
+    },
+    {
+      "question": "Com quantos caminhoes a empresa comecou e qual sistema processa os pedidos da regiao Norte?",
+      "expected_route": "vectorial+graph",
+      "actual_route": "graph+vectorial",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A empresa começou com dois caminhões. O Sistema Atlas é o que processa os pedidos da região Norte.",
+      "seconds": 1.0375273999998171
+    },
+    {
+      "question": "O que o atendimento deve evitar no vocabulario e qual norma regula os dados pessoais?",
+      "expected_route": "vectorial+graph",
+      "actual_route": "graph+vectorial",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "O atendimento deve evitar jargão interno e frases longas, preferindo linguagem simples e concisa. A Norma NC-11 regula o tratamento de dados pessoais de clientes.",
+      "seconds": 1.12063549999948
+    },
+    {
+      "question": "Qual mes teve o menor faturamento e o que o atendente nunca deve responder ao cliente?",
+      "expected_route": "relational+vectorial",
+      "actual_route": "relational+vectorial",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "O mês com o menor faturamento foi janeiro. O atendente nunca deve responder \"está a caminho\" ao cliente, pois essa frase não informa nada e o cliente já sabe.",
+      "seconds": 1.3217107000000397
+    },
+    {
+      "question": "Qual produto gerou menos receita e o que dizer ao cliente que pergunta onde esta a carga?",
+      "expected_route": "relational+vectorial",
+      "actual_route": "relational+vectorial",
+      "route_ok": true,
+      "recall": {},
+      "reciprocal_rank": null,
+      "retrieved": null,
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "O produto que gerou menos receita é Armazenagem. Ao cliente que pergunta onde está a carga, deve-se informar a cidade atual da carga e a previsão de chegada com data, evitando a frase \"está a caminho\".",
+      "seconds": 1.4153518000002805
+    }
+  ]
+}

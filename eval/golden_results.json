@@ -2,14 +2,14 @@
   "summary": {
     "overall": {
       "questions": 40,
-      "router_accuracy": 0.875,
-      "recall@1": 0.6607142857142857,
-      "recall@5": 0.8035714285714286,
-      "recall@10": 0.8035714285714286,
-      "mrr": 0.7410714285714286,
+      "router_accuracy": 0.9,
+      "recall@1": 0.6964285714285714,
+      "recall@5": 0.8392857142857143,
+      "recall@10": 0.8392857142857143,
+      "mrr": 0.7767857142857143,
       "empty_retrieval": 0.03571428571428571,
-      "answer_facts": 0.8571428571428571,
-      "seconds_avg": 0.9255601950000255
+      "answer_facts": 0.8857142857142857,
+      "seconds_avg": 0.9462189649998436
     },
     "graph": {
       "questions": 16,
@@ -20,7 +20,7 @@
       "mrr": 0.828125,
       "empty_retrieval": 0.0,
       "answer_facts": 0.8666666666666667,
-      "seconds_avg": 0.9841272500000287
+      "seconds_avg": 0.9301131687496991
     },
     "relational": {
       "questions": 12,
@@ -31,18 +31,18 @@
       "mrr": null,
       "empty_retrieval": null,
       "answer_facts": 1.0,
-      "seconds_avg": 0.8683503166667682
+      "seconds_avg": 0.9471781333333334
     },
     "vectorial": {
       "questions": 12,
-      "router_accuracy": 0.75,
-      "recall@1": 0.5833333333333334,
-      "recall@5": 0.6666666666666666,
-      "recall@10": 0.6666666666666666,
-      "mrr": 0.625,
+      "router_accuracy": 0.8333333333333334,
+      "recall@1": 0.6666666666666666,
+      "recall@5": 0.75,
+      "recall@10": 0.75,
+      "mrr": 0.7083333333333334,
       "empty_retrieval": 0.08333333333333333,
-      "answer_facts": 0.625,
-      "seconds_avg": 0.904680666666612
+      "answer_facts": 0.75,
+      "seconds_avg": 0.9667341916665464
     }
   },
   "questions": [
@@ -57,7 +57,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A receita total da região Sudeste foi de 4.988.300.",
-      "seconds": 0.9124253999998473
+      "seconds": 1.0492687999994814
     },
     {
       "question": "Qual a receita total da regiao Nordeste?",
@@ -70,7 +70,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A receita total da região Nordeste é de 2.500.700.",
-      "seconds": 0.8813380999999936
+      "seconds": 0.9864770000003773
     },
     {
       "question": "Quanto a regiao Norte faturou no total?",
@@ -83,7 +83,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A região Norte faturou um total de 1.415.800.",
-      "seconds": 0.8986978000002637
+      "seconds": 0.9949751000003744
     },
     {
       "question": "Qual foi a receita total de todas as regioes somadas?",
@@ -96,7 +96,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A receita total de todas as regiões somadas foi de 12.950.950.",
-      "seconds": 0.8781315000005634
+      "seconds": 0.9545684000004258
     },
     {
       "question": "Qual foi a receita do mes de marco?",
@@ -109,7 +109,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A receita do mês de março foi de 3.293.750.",
-      "seconds": 0.9182880999996996
+      "seconds": 0.971840100000918
     },
     {
       "question": "Qual foi a receita do mes de abril?",
@@ -122,7 +122,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A receita do mês de abril foi de 3.454.400.",
-      "seconds": 0.9071269999994911
+      "seconds": 0.9773231999988639
     },
     {
       "question": "Quantas unidades de Armazenagem foram vendidas no total?",
@@ -135,7 +135,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "Foram vendidas 1882 unidades de Armazenagem no total.",
-      "seconds": 0.8887263999995412
+      "seconds": 0.9382069999992382
     },
     {
       "question": "Quantas unidades de Frete Rodoviario foram vendidas?",
@@ -148,7 +148,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "Foram vendidas 4559 unidades de Frete Rodoviario.",
-      "seconds": 0.9101823999999397
+      "seconds": 0.9848524999997608
     },
     {
       "question": "Qual a receita total do produto Frete Rodoviario?",
@@ -161,7 +161,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A receita total do produto Frete Rodoviario é de 8.434.150.",
-      "seconds": 0.9859697000001688
+      "seconds": 1.0701332000007824
     },
     {
       "question": "Qual regiao teve a maior receita?",
@@ -174,7 +174,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A região Sudeste teve a maior receita.",
-      "seconds": 0.7835362000005262
+      "seconds": 0.829722499998752
     },
     {
       "question": "Qual regiao teve a menor receita?",
@@ -186,8 +186,8 @@
       "retrieved": null,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "A regiao com a menor receita foi o Norte.",
-      "seconds": 0.7516122000006362
+      "answer": "A região Norte teve a menor receita.",
+      "seconds": 0.794287799999438
     },
     {
       "question": "Quantas unidades foram vendidas ao todo?",
@@ -200,7 +200,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "Foram vendidas 6441 unidades ao todo.",
-      "seconds": 0.7041690000005474
+      "seconds": 0.8144820000015898
     },
     {
       "question": "O que motivou a criacao do Sistema Atlas?",
@@ -218,27 +218,25 @@
       "missing_facts": [
         "Recife"
       ],
-      "answer": "O contexto não informa o motivo da criação do Sistema Atlas.",
-      "seconds": 0.7930779999996957
+      "answer": "O contexto não informa o que motivou a criação do Sistema Atlas.",
+      "seconds": 0.9746386999995593
     },
     {
       "question": "Em que ano a Meridiano Logistica foi fundada?",
       "expected_route": "vectorial",
-      "actual_route": "graph",
-      "route_ok": false,
+      "actual_route": "vectorial",
+      "route_ok": true,
       "recall": {
-        "1": 0.0,
-        "5": 0.0,
-        "10": 0.0
+        "1": 1.0,
+        "5": 1.0,
+        "10": 1.0
       },
-      "reciprocal_rank": 0.0,
+      "reciprocal_rank": 1.0,
       "retrieved": 10,
-      "facts_ok": false,
-      "missing_facts": [
-        "2011"
-      ],
-      "answer": "O contexto não fornece informações sobre o ano de fundação da Meridiano Logística.",
-      "seconds": 0.8027430000001914
+      "facts_ok": true,
+      "missing_facts": [],
+      "answer": "A Meridiano Logística foi fundada em 2011.",
+      "seconds": 0.6736758000006375
     },
     {
       "question": "Onde a empresa comecou a operar?",
@@ -254,8 +252,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "A empresa começou a operar em 2011, inicialmente numa sala alugada em Belém.",
-      "seconds": 0.6273985999996512
+      "answer": "A empresa começou a operar em 2011, inicialmente em uma sala alugada em Belém.",
+      "seconds": 0.8443006999987119
     },
     {
       "question": "Qual era a conviccao dos fundadores sobre o gargalo da logistica?",
@@ -272,7 +270,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "Os fundadores acreditavam que o gargalo da logística no Norte do país não era a estrada, mas sim a informação. Eles tinham a convicção de que ninguém sabia onde a carga estava.",
-      "seconds": 0.8744291000002704
+      "seconds": 0.9994927999996435
     },
     {
       "question": "Em quantas regioes a empresa opera hoje?",
@@ -289,7 +287,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A empresa opera em 5 regiões.",
-      "seconds": 0.6988847000002352
+      "seconds": 0.794444700000895
     },
     {
       "question": "Quantas pessoas a empresa emprega?",
@@ -306,7 +304,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A empresa emprega cerca de quatrocentas pessoas.",
-      "seconds": 0.5719077000003381
+      "seconds": 0.6568745999993553
     },
     {
       "question": "Qual e o compromisso publico da empresa?",
@@ -322,8 +320,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "O compromisso público da empresa é entregar previsibilidade. Essa escolha define quase tudo que a Meridiano faz, desde a política de aprovação de compras até a decisão de manter os próprios sistemas em vez de terceirizar.",
-      "seconds": 1.0473580999996557
+      "answer": "O compromisso público da empresa é entregar previsibilidade. Essa previsibilidade é definida como a prioridade em vez da entrega mais rápida ou mais barata. Essa escolha influencia desde a política de compras até a decisão de manter sistemas próprios.",
+      "seconds": 1.0644331000003149
     },
     {
       "question": "O que a empresa priorizou nos primeiros anos em vez de volume?",
@@ -341,8 +339,8 @@
       "missing_facts": [
         "rastreamento"
       ],
-      "answer": "A empresa priorizou a previsibilidade em vez da velocidade ou do menor custo. Essa escolha definiu quase todas as decisões da Meridiano, desde a política de compras até a manutenção de sistemas internos.",
-      "seconds": 0.9267174999995405
+      "answer": "A empresa priorizou a previsibilidade em vez da velocidade ou do menor custo. Essa escolha influenciou decisões como a manutenção de sistemas próprios e a tomada de decisões operacionais próximas à execução.",
+      "seconds": 1.060169099999257
     },
     {
       "question": "O que dizer ao cliente que pergunta onde esta a carga?",
@@ -359,7 +357,7 @@
       "facts_ok": null,
       "missing_facts": [],
       "answer": "Diga a cidade em que a carga está e a previsão de chegada com data. Se a previsão mudou, informe o motivo antes que o cliente pergunte. Nunca responda apenas que \"está a caminho\", pois isso não informa nada.",
-      "seconds": 1.0083297999999559
+      "seconds": 1.092139500000485
     },
     {
       "question": "Como o atendimento deve agir quando nao ha informacao disponivel?",
@@ -376,7 +374,7 @@
       "facts_ok": null,
       "missing_facts": [],
       "answer": "Diga que a informação não está disponível, informe qual será o próximo momento em que ela estará disponível e retorne ao cliente nesse horário, mesmo que nada tenha mudado. O retorno prometido e cumprido é mais valioso do que a informação em si.",
-      "seconds": 1.1019916999994166
+      "seconds": 1.1542898000006971
     },
     {
       "question": "Que tipo de linguagem o atendimento deve evitar com o cliente?",
@@ -392,8 +390,8 @@
       "retrieved": 10,
       "facts_ok": null,
       "missing_facts": [],
-      "answer": "O atendimento deve evitar jargão interno, como \"romaneio\", \"cross-docking\" ou \"janela de coleta\", pois o cliente não conhece esses termos. Além disso, é necessário evitar frases vazias como \"está a caminho\", que não fornecem informações úteis. Frases curtas e uma ideia por parágrafo são preferidas para a comunicação.",
-      "seconds": 1.3273577999998452
+      "answer": "O atendimento deve evitar jargão interno, como \"romaneio\", \"cross-docking\" ou \"janela de coleta\", pois o cliente não conhece esses termos. Além disso, frases curtas e uma ideia por parágrafo são preferidas.",
+      "seconds": 1.1425584999997227
     },
     {
       "question": "Como uma reclamacao de cliente deve ser tratada?",
@@ -410,7 +408,7 @@
       "facts_ok": null,
       "missing_facts": [],
       "answer": "Uma reclamação deve ser registrada mesmo que o cliente esteja errado sobre a causa, pois o incômodo dele é real. Nunca se deve discutir a interpretação antes de reconhecer o incômodo, resolvendo o problema primeiro e explicando depois se o cliente quiser.",
-      "seconds": 1.0759720000005473
+      "seconds": 1.1437929999992775
     },
     {
       "question": "Uma compra de oitenta mil reais do Fornecedor Vega precisa de qual aprovacao?",
@@ -426,8 +424,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "A compra de oitenta mil reais do Fornecedor Vega requer aprovação prévia da Diretoria Financeira, pois o Contrato Marco 2026 do fornecedor segue a Política PC-04, que estabelece que compras acima de cinquenta mil reais precisam dessa aprovação.",
-      "seconds": 1.3410146000005625
+      "answer": "A compra de oitenta mil reais do Fornecedor Vega requer aprovação prévia da Diretoria Financeira, pois o valor ultrapassa o limite de cinquenta mil reais estabelecido na Política PC-04. O Fornecedor Vega opera sob o Contrato Marco 2026, que segue integralmente a Política PC-04. Portanto, qualquer compra acima de cinquenta mil reais precisa de aprovação da Diretoria Financeira.",
+      "seconds": 1.6327798000002076
     },
     {
       "question": "Quem aprova uma compra de trinta mil reais?",
@@ -444,7 +442,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "Uma compra de trinta mil reais pode ser aprovada pelo Gerente de Suprimentos, pois o valor está entre dez mil e cinquenta mil reais.",
-      "seconds": 1.0206968000002234
+      "seconds": 0.8788146000006236
     },
     {
       "question": "Compras abaixo de dez mil reais precisam de aprovacao?",
@@ -461,7 +459,7 @@
       "facts_ok": null,
       "missing_facts": [],
       "answer": "Não, compras abaixo de dez mil reais não precisam de aprovação formal.",
-      "seconds": 0.7126242999993337
+      "seconds": 0.6736225999993621
     },
     {
       "question": "Os pedidos processados pelo Sistema Atlas seguem qual politica de aprovacao?",
@@ -477,8 +475,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "Os pedidos processados pelo Sistema Atlas seguem a Política PC-09, que exige dupla aprovação antes do faturamento. Essa política aplica-se especificamente aos pedidos originados na região Norte, onde o Sistema Atlas opera. A dupla aprovação envolve o Gerente Regional e a Diretoria de Operações.",
-      "seconds": 1.3457877999999255
+      "answer": "Os pedidos processados pelo Sistema Atlas seguem a Política PC-09, que exige dupla aprovação antes do faturamento. Essa política aplica-se especificamente aos pedidos originados na região Norte, e o Sistema Atlas é responsável por processar pedidos dessa região.",
+      "seconds": 1.0085277999987738
     },
     {
       "question": "Quem participa da dupla aprovacao exigida na regiao Norte?",
@@ -494,8 +492,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "A dupla aprovação exigida na região Norte envolve o Gerente Regional e a Diretoria de Operações. Esta política foi criada após um incidente de faturamento duplicado em 2025. O Sistema Atlas processa esses pedidos e armazena dados pessoais de clientes.",
-      "seconds": 1.2820251000002827
+      "answer": "A dupla aprovação exigida na região Norte envolve o Gerente Regional e a Diretoria de Operações. Esta regra foi estabelecida pela Política PC-09 para todos os pedidos originados nessa região.",
+      "seconds": 1.0056272000001627
     },
     {
       "question": "O Fornecedor Vega ainda pode ser homologado?",
@@ -511,8 +509,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "Não, o Fornecedor Vega não pode ser homologado porque perdeu a Certificação ISO 9001 em fevereiro. A homologação de qualquer fornecedor depende estritamente de uma Certificação ISO 9001 válida. O Comitê de Riscos pode suspender o contrato a qualquer momento após a perda dessa certificação.",
-      "seconds": 1.4730742000001555
+      "answer": "Não, o Fornecedor Vega não pode ser homologado porque perdeu a Certificação ISO 9001 em fevereiro. A homologação de qualquer fornecedor depende de uma Certificação ISO 9001 válida. O Comitê de Riscos pode suspender o Contrato Marco 2026 a qualquer momento após a perda dessa certificação.",
+      "seconds": 1.3673634999995556
     },
     {
       "question": "Quem pode suspender o Contrato Marco 2026?",
@@ -529,7 +527,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "O Comitê de Riscos pode suspender o Contrato Marco 2026. Isso ocorre quando um fornecedor perde sua Certificação ISO 9001 válida.",
-      "seconds": 0.9790155999999115
+      "seconds": 0.9397791999999754
     },
     {
       "question": "Quais fornecedores operam sob o Contrato Marco 2026?",
@@ -546,7 +544,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "Os fornecedores que operam sob o Contrato Marco 2026 são o Fornecedor Vega e o Fornecedor Kappa. O Fornecedor Vega opera desde janeiro, enquanto o Fornecedor Kappa opera desde março.",
-      "seconds": 1.081876000000193
+      "seconds": 1.0231387999992876
     },
     {
       "question": "Se o Banco de Dados Orion entrar em manutencao, quais dados ficam inacessiveis?",
@@ -564,8 +562,8 @@
       "missing_facts": [
         "dados pessoais"
       ],
-      "answer": "O contexto não fornece informações sobre o Banco de Dados Orion, nem lista quais dados ficam inacessíveis durante manutenções.",
-      "seconds": 0.7369148999996469
+      "answer": "O contexto não fornece informações sobre o Banco de Dados Orion, suas manutenções ou quais dados ficam inacessíveis durante esses períodos.",
+      "seconds": 0.7550675999991654
     },
     {
       "question": "Quando ocorre a manutencao do Banco de Dados Orion?",
@@ -581,8 +579,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "A manutenção do Banco de Dados Órion ocorre no primeiro domingo de cada mês. Durante esse período, o Sistema Atlas fica indisponível.",
-      "seconds": 0.9533754000003682
+      "answer": "A manutenção do Banco de Dados Órion ocorre no primeiro domingo de cada mês. Durante esse período, o Sistema Atlas fica indisponível. O banco de dados replica para o Banco de Dados Vesta a cada seis horas.",
+      "seconds": 1.02339099999881
     },
     {
       "question": "O que acontece com os pagamentos se o Gateway Iris falhar?",
@@ -598,8 +596,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "Se o Gateway Íris falhar, todos os pagamentos do Sistema Helios são interrompidos.",
-      "seconds": 0.7466308000002755
+      "answer": "Se o Gateway Íris falhar, todos os pagamentos do Sistema Helios são interrompidos. O Sistema Helios depende diretamente desse gateway para autorizar transações.",
+      "seconds": 0.8862351999996463
     },
     {
       "question": "De qual sistema o Sistema Helios depende para validar pedidos?",
@@ -616,7 +614,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "O Sistema Helios consulta o Sistema Atlas para validar cada pedido.",
-      "seconds": 0.733678399999917
+      "seconds": 0.658739799999239
     },
     {
       "question": "Qual norma regula o tratamento de dados pessoais de clientes?",
@@ -633,7 +631,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A Norma NC-11 regula o tratamento de dados pessoais de clientes. Esta norma exige a anonimização antes de qualquer exportação para terceiros e determina uma retenção máxima de vinte e quatro meses.",
-      "seconds": 0.9795374999994237
+      "seconds": 0.9584419999991951
     },
     {
       "question": "Por quanto tempo os registros financeiros devem ser guardados?",
@@ -649,8 +647,8 @@
       "retrieved": 10,
       "facts_ok": true,
       "missing_facts": [],
-      "answer": "Os registros financeiros devem ser guardados por pelo menos sessenta meses.",
-      "seconds": 0.7430032000002029
+      "answer": "Os registros financeiros devem ser guardados por um período mínimo de sessenta meses.",
+      "seconds": 0.6750721000007616
     },
     {
       "question": "O que a Norma NC-11 exige antes de exportar dados para terceiros?",
@@ -667,7 +665,7 @@
       "facts_ok": true,
       "missing_facts": [],
       "answer": "A Norma NC-11 exige anonimização antes de qualquer exportação para terceiros.",
-      "seconds": 0.8134438999995837
+      "seconds": 0.6880720000008296
     },
     {
       "question": "Uma exportacao sem anonimizacao e reportada para quem?",
@@ -685,8 +683,8 @@
       "missing_facts": [
         "Diretoria Executiva"
       ],
-      "answer": "O contexto não fornece informações sobre exportações, anonimização de dados ou destinatários de relatórios relacionados a esse tema.",
-      "seconds": 0.8033375000004526
+      "answer": "O contexto não fornece informações sobre exportações, anonimização ou destinatários de relatórios.",
+      "seconds": 0.7071374999995896
     }
   ]
 }

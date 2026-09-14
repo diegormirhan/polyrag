@@ -61,7 +61,8 @@ model for what only a model can do.**
 | Which store does this belong in? | Cosine similarity + margin | ✅ |
 | Is this question already answered? | Cosine ≥ threshold | ✅ |
 | Which graph chunks matter? | Personalized PageRank | ✅ |
-| Genuine tie between two routes | A model breaks it | ⚠️ rare, and marked as such |
+| Genuine tie between two routes | Cosine against the headings each store holds | ✅ |
+| Does this message ask more than one question? | Clause split + interrogative test | ✅ |
 | Writing the answer | A model | ⚠️ temperature 0 |
 
 The claim is not a new algorithm. It is that **routing does not need one** — and that a system which
@@ -133,7 +134,7 @@ score_top1 < tau_low                          →  fall back to free text
 otherwise                                     →  gray zone, go to stage 3
 ```
 
-This is a 1-nearest-neighbour classifier with a rejection rule. Cost: **9.3 ms**, measured.
+This is a 1-nearest-neighbour classifier with a rejection rule. Cost: **8.8 ms**, measured.
 
 **3 · Store evidence.** Only in the gray zone. The configured phrases say what a route is *for*;
 they cannot know what a corpus turned out to contain. So each store is asked for the section
@@ -151,6 +152,51 @@ from 82% to 95% instead.
 *The gray zone, resolved without a model. Nothing hand-written in `config.yaml` could know that
 "Banco de Dados Órion" names a section in the graph — so this question used to go to the relational
 store, whose only table is about sales.*
+
+### When the message asks more than one question
+
+> *"Qual foi a receita do mês de março **e** qual norma regula a retenção desses registros?"*
+
+The figure is in SQL and the rule is in the graph, and picking one store answers half the message.
+So each question is routed on its own, and each store is queried **with the text of its own
+question** — not with the whole message. That last part is not a detail: handing the full sentence
+to the Text-to-SQL step produced a query the guards rejected, and the relational half went
+unanswered.
+
+Detecting the case is where this got interesting. The obvious rule is a threshold on the router's
+second-best score, and it was measured and thrown away: **compound questions score `top2` between
+0.365 and 0.511, single ones between 0.303 and 0.476.** The ranges overlap almost completely, and
+the plainly single question *"Como uma reclamação de cliente deve ser tratada?"* (0.476) outscores
+five of the seven compound ones. The cause is mechanical — an embedding of two subjects lands near
+their *average*, so a second subject dilutes both scores instead of lifting the second. It is the
+same shape of failure as the cache threshold below, and no cutoff separates it.
+
+What separates them is structure. A compound message contains two questions, so `clauses.py` splits
+on clause boundaries (`?`, `;`, `e`, `and`) and requires **every** surviving fragment to contain an
+interrogative. Without that second test, two of the 80 evaluation questions split wrongly: *"Uma
+exportação sem anonimização **e** reportada para quem?"*, where the `e` is the verb *é* written
+unaccented, and *"Qual a diferença entre um atraso comunicado **e** um atraso descoberto?"*, where
+it joins two noun phrases. In both, one half asks nothing at all.
+
+Measured: **9 of 9 compound messages detected, 0 false positives in 80 single questions.** The
+stores are then queried with `asyncio.gather` and their results concatenated under `[SQL]`,
+`[TEXT]` and `[GRAPH]` labels — not fused by RRF, because RRF merges two rankings *of the same
+items*, and here the stores hold disjoint content and one of them returns a SQL result table rather
+than a ranked list.
+
+![One message, two questions, two stores](docs/screenshots/chat-multi.png)
+
+*One message asking a figure and a rule. The route line reads `relational + graph`, and the answer
+carries both halves: the `SUM` from the sales table and the approval threshold from the compliance
+graph.*
+
+### Lost in the middle
+
+Retrieved passages are reordered before the model reads them, following Liu et al. 2023: a model
+attends to the start and the end of a context and least to its middle. Ranks 1, 3, 5 go out in order
+and 2, 4 come back reversed, so `[1,2,3,4,5]` becomes `[1,3,5,4,2]` — the best passage opens the
+context and the second best closes it. Pure list slicing; the ranking was already done. SQL rows are
+left alone, because their order is the `ORDER BY` that selected them.
 
 ---
 
@@ -195,27 +241,27 @@ p50 and p95 rather than an average.
 
 | | p50 | p95 |
 |---|---:|---:|
-| Routing decision (deterministic stage) | **9.3 ms** | 11.5 ms |
-| Routing decision on the wire, streaming | **39 ms** | 65 ms |
-| Time to first token | **249 ms** | 286 ms |
-| Full answer, vectorial | **393 ms** | 414 ms |
-| Full answer, relational | **764 ms** | 781 ms |
-| Full answer, graph | **986 ms** | 1033 ms |
-| Cache hit, same question | **9.3 ms** | 9.7 ms |
-| Share of a request spent inside model calls | **98 %** | |
+| Routing decision (deterministic stage) | **8.8 ms** | 12.0 ms |
+| Routing decision on the wire, streaming | **39 ms** | 54 ms |
+| Time to first token | **114 ms** | 185 ms |
+| Full answer, vectorial | **252 ms** | 255 ms |
+| Full answer, graph | **724 ms** | 744 ms |
+| Full answer, relational | **737 ms** | 745 ms |
+| Cache hit, same question | **9.3 ms** | 12.9 ms |
+| Share of a request spent inside model calls | **99 %** | |
 
 Per stage, from each request's own spans rather than a second set of timers:
-`pipeline.router` 9.3 ms, `rag.relational.generate_sql` 389 ms, `rag.graph.seeds` 100 ms,
-`rag.graph.fuse` 60 ms, `rag.graph.pagerank` 1.0 ms.
+`pipeline.router` 8.8 ms, `rag.relational.generate_sql` 374 ms, `pipeline.rag.graph` 19 ms
+(`rag.graph.seeds` 10.0, `rag.graph.fuse` 8.1, `rag.graph.pagerank` 1.0).
 
-Two of those are worth reading together: **Personalized PageRank, the algorithm the graph route is
-named for, costs 1 ms — and finding the entities to seed it costs a hundred**, because entity
-vectors are recomputed on every query instead of at ingestion. That cost grows with the corpus: the
-same figure was 76 ms when the graph held 40 entities and is 100 ms at 51.
+**The whole graph route costs 19 ms, and the model then spends 700 writing the answer.** Retrieval
+is not where the time goes.
 
-Two of those are worth reading together: **Personalized PageRank, the algorithm the graph route is
-named for, costs 1 ms — and everything around it costs 130.** Retrieval is not where the time goes;
-99% of a request is the model writing the answer.
+That used to read very differently. Seeding the walk cost **100 ms** — ten times the PageRank it
+feeds — because every entity in the graph was re-embedded on every single query, and the cost grew
+with the corpus: 76 ms at 40 entities, 100 ms at 51. Entity names and chunk texts never change once
+stored, so their vectors are now computed once and kept. The span attribute `graph.embedded` reports
+how many had to be computed on that query, so if this ever regresses it will say so rather than hide.
 
 Two changes worth their own line, because both were found by instrumenting rather than guessing:
 
@@ -236,6 +282,7 @@ is the overfitting.
 ```bash
 uv run python scripts/evaluate.py --reset                       # wipe, re-ingest, measure
 uv run python scripts/evaluate.py --set eval/holdout_set.yaml   # same corpus, other questions
+uv run python scripts/evaluate.py --set eval/compound_set.yaml  # messages that ask two questions
 ```
 
 `--reset` is not a convenience. Measuring against whatever the stores happen to hold is how a number
@@ -248,14 +295,25 @@ run produced.
 
 |              |  n | router | r@1 | r@5 | MRR | empty | facts |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **golden, overall**   | 40 | 88% | 66% | 80% | 0.74 | 4% | 86% |
+| **golden, overall**   | 40 | 90% | 70% | 84% | 0.78 | 4% | 89% |
 | relational   | 12 | 100% | — | — | — | — | 100% |
-| vectorial    | 12 | 75% | 58% | 67% | 0.62 | 8% | 62% |
+| vectorial    | 12 | 83% | 67% | 75% | 0.71 | 8% | 75% |
 | graph        | 16 | 88% | 72% | 91% | 0.83 | 0% | 87% |
-| **held-out, overall** | 40 | **95%** | 71% | **86%** | 0.79 | **0%** | **89%** |
-| relational   | 12 | 100% | — | — | — | — | 92% |
+| **held-out, overall** | 40 | **95%** | 68% | **86%** | 0.77 | **0%** | **92%** |
+| relational   | 12 | 100% | — | — | — | — | 100% |
 | vectorial    | 12 | 92% | 58% | 75% | 0.67 | 0% | 80% |
-| graph        | 16 | 94% | 81% | 94% | 0.88 | 0% | 93% |
+| graph        | 16 | 94% | 75% | 94% | 0.84 | 0% | 93% |
+| **compound, overall** | 10 | 90% | — | — | — | — | 90% |
+| relational + graph | 5 | 80% | — | — | — | — | 80% |
+| relational + vectorial | 2 | 100% | — | — | — | — | 100% |
+| vectorial + graph | 3 | 100% | — | — | — | — | 100% |
+
+`eval/compound_set.yaml` is a third, smaller set of messages that each ask **two** questions. It
+exists because neither 40-question set can measure multi-route retrieval — every entry in them asks
+one thing. `router` there means "every store that had to be consulted was consulted", and each entry
+lists one fact from *each* half, so answering only one half counts as a failure. `recall@k` is not
+reported for it: each half is retrieved from its own store with its own text, so there is no single
+ranked list to score.
 
 The held-out set scores **higher** than the set the thresholds were tuned against, which is the
 opposite of what overfitting looks like. The explanation is not that the tuning generalised
@@ -274,11 +332,20 @@ returns SQL rows rather than passages.
 and no single chunk contains both, so the best achievable r@1 on these sets is 95%. It is also not
 what the system serves: the answer step receives the top 5.
 
-**The weak route is `vectorial`, and one paragraph explains most of it.** Re-ingesting moved the
-company-history paragraph about tracking terminals from the vector store to the graph, and the three
-questions that needed it went to 0% recall in their own route. The chunk sits close enough to the
-routing boundary that rewording the anchors moves it, which is a real fragility of anchor-based
+**The weak route is `vectorial`, and one paragraph explains most of what is left.** Re-ingesting
+moved the company-history paragraph about tracking terminals from the vector store to the graph, and
+the questions that needed it went to 0% recall in their own route. The chunk sits close enough to
+the routing boundary that rewording the anchors moves it, which is a real fragility of anchor-based
 ingestion and not a measurement artefact.
+
+It used to explain considerably more. On the golden set the route was at 75% routing and 62% facts,
+and a heading bug was most of the gap: `section_headings` drops a document's own title, because a
+title names a file rather than a subject — but it tested for a leading `#`, and by the time a chunk
+carries its heading trail the `#` is gone. `sobre_a_meridiano.md` has a single `# Sobre a Meridiano
+Logística` and no subheadings, so one of its paragraphs landing in the graph taught the router that
+the graph holds *"Sobre a Meridiano Logística"*, and every question naming the company went there —
+including "em que ano a Meridiano Logística foi fundada", whose answer is in the vector store. With
+the title excluded as it was always meant to be, that route reads 83% and 75%.
 
 #### What the measurement changed
 
@@ -313,8 +380,17 @@ confident answer about the wrong subject. Worse, one query answered from itself:
 read-only, and a hallucination wearing SQL syntax. Both are now rejected structurally, and a store
 that returns nothing hands the question to the vector store instead of giving up.
 
-Per-question detail, including every answer, is in `eval/golden_results.json` and
-`eval/holdout_results.json`.
+**A margin rule on the gray zone was tried and rejected.** Stage 3 decides outright, with no margin
+test of its own, and requiring it to beat the runner-up by `delta_margin` before overruling stage 2
+looked obviously right: it would have stopped a heading from flipping a call the geometry had made
+correctly by 0.496 to 0.489. On the golden set it did exactly that — routing 90% → 95%, facts 89% →
+94%, the graph route perfect. On the held-out set it broke two other questions and took routing
+95% → 90%. **Six errors in eighty questions before, six after.** It moved them rather than removing
+them, and only looked like an improvement on the set it was chosen against. This is the one result
+here that the held-out set alone could produce, and it is why the two files are kept apart.
+
+Per-question detail, including every answer, is in `eval/golden_results.json`,
+`eval/holdout_results.json` and `eval/compound_results.json`.
 
 ---
 
@@ -374,8 +450,11 @@ two documents that never mention each other.
 
 **The cache.** A question's embedding is compared against every cached question with FAISS
 `IndexFlatIP` — exact brute force by inner product, which is again cosine because the vectors are
-normalised. Above the threshold, the stored answer is returned in about 9 ms. The threshold is
-also the cache's open defect: see the limitations below.
+normalised. Above the threshold, and provided the two questions name the same things, the stored
+answer is returned in about 9 ms. That second condition is not geometry and does not pretend to be:
+the names, the figures and the number of questions asked are compared exactly, because "Sudeste" and
+"Nordeste" are one word apart in a long sentence and score 0.917 against each other. Cosine is good
+at "same topic" and bad at "same entity"; neither half is asked to do the other's job.
 
 **Why this matters here.** These steps are pure functions over numbers, which is what makes them
 testable without a model server, reproducible across runs, and explainable after the fact. The
@@ -441,14 +520,15 @@ phrases that define each route. **Adding a route is a config change, not a code 
 ## Verifying it
 
 ```bash
-uv run pytest tests/ -q          # 79 tests, no servers required
+uv run pytest tests/ -q          # 116 tests, no servers required
 uv run ruff check backend/ scripts/ tests/
 npm --prefix frontend run check  # 0 errors
 ```
 
 The unit tests cover cosine and margin, the routing decision, the read-only SQL guard, entity
-normalisation and length limits, the tabularity heuristic, the cache, and every chunking rule. They
-need no GPU and no network — which is the point of keeping that code pure.
+normalisation and length limits, the tabularity heuristic, the cache, the clause splitter, the
+context ordering and every chunking rule. They need no GPU and no network — which is the point of
+keeping that code pure.
 
 The chunking tests exist because chunking is where most of this project's real bugs came from, and
 they are verified by mutation rather than assumed: removing a guard has to fail exactly the test
@@ -458,8 +538,9 @@ The scripts under `tests/` named `*_integration.py` are run by hand against a li
 their results; pytest collects nothing from them.
 
 ```bash
-uv run python scripts/evaluate.py --reset   # re-ingests, then measures the golden set
-uv run python scripts/benchmark.py   # latency p50/p95, same requirements
+uv run python scripts/evaluate.py --reset            # re-ingests, then measures the golden set
+uv run python scripts/benchmark.py                   # latency p50/p95, same requirements
+uv run python -u tests/test_reingest_integration.py  # a corrected file replaces its old chunks
 ```
 
 ---
@@ -504,8 +585,10 @@ npm --prefix frontend run dev
 
 Then ask, in order: a figure (`What was the total revenue of the Sudeste region?`), something
 narrative (`In what year was Meridiano Logistica founded?`), a chain that crosses two files (`Which
-approval policy do the orders processed by Sistema Atlas follow?`), and finally any of them a second
-time to watch the cache answer in 9 ms. The corpus is in Portuguese and the questions are in
+approval policy do the orders processed by Sistema Atlas follow?`), one message that asks two things
+at once (`What was the Sudeste revenue and who approves a purchase of eighty thousand reais?` — the
+panel shows `relational + graph`), and finally any of them a second time to watch the cache answer in
+9 ms. The corpus is in Portuguese and the questions are in
 English on purpose: routing and retrieval work across languages because BGE-M3 embeds both into one
 space, and the sources are shown untranslated. [`demo/README.md`](demo/README.md) has the full
 script, the expected figures, and the two questions that fail.
@@ -516,27 +599,28 @@ script, the expected figures, and the two questions that fail.
 
 Stated because they are real, not because they are theoretical:
 
-- **The semantic cache can serve the wrong answer.** Measured, not theoretical: ask for the
-  Sudeste revenue, then ask for the Nordeste revenue, and the second question is answered from
-  cache with the first one's figure. The two questions differ by one word in a long sentence, so
-  they score 0.917 against each other — above the 0.80 threshold. Raising the threshold does not
-  fix it: legitimate paraphrases of the same question score 0.771 to 0.911, so the ranges overlap
-  and no single cutoff separates them. `scripts/benchmark.py` reports cache hits and misses
-  separately so this stays visible.
+- **A question contained inside another one can still be confused.** The cache no longer serves the
+  Nordeste figure for the Sudeste question — a hit now requires the embedding to agree *and* the
+  names, numbers and question count to match exactly — but the guard compares sets, so two messages
+  that name the same things and ask the same number of questions still rest on the 0.80 threshold
+  alone. Cosine similarity is good at "same topic" and bad at "same entity"; the token check is the
+  opposite, and between them there is a gap neither covers.
 - **Ingestion routing is sensitive to the anchors, so the corpus is not stable across changes.**
   Rewriting the route anchors moved one paragraph of the company history from the vector store to
   the graph, and three questions that had been passing began to fail. Nothing about the file or the
   chunking changed; the chunk simply sits near the boundary. Any anchor edit therefore requires a
   re-ingestion and a re-measurement, which is what `evaluate.py --reset` exists to enforce.
-- **Store headings carry proper nouns, and proper nouns collide.** The heading "Contratos marco"
-  pulls "qual foi a receita do mes de marco" toward the graph, because *março* the month and
-  *Marco* the contract normalise to the same word. It costs two questions on the golden set and is
-  the price of letting the corpus speak for itself.
-- **`recall@1` sits at 66–71%.** Its ceiling on these sets is 95%, since three questions need two
+- **A store knowing an entity is not the same as holding its answer, and stage 3 cannot tell the
+  difference.** "O que motivou a criação do Sistema Atlas?" is a narrative question whose answer is
+  in the company history, and it goes to the graph because the graph has a section literally called
+  *Sistema Atlas*. The evidence is real and beside the point. Requiring the evidence to win by a
+  margin was measured and made the held-out set worse — see above.
+- **`recall@1` sits at 68–70%.** Its ceiling on these sets is 95%, since three questions need two
   passages and no chunk holds both. The answer step is served the top 5.
-- **The `vectorial` route is the weak one on both sets**, at 75% and 92% routing and 62% and 80%
-  answer facts. Counting and procedural questions about prose keep landing on the other two.
-- **The retrieval numbers describe a 24-chunk corpus.** With top-5 over 10 graph chunks, half the
+- **The `vectorial` route is still the weak one on both sets**, at 83% and 92% routing and 75% and
+  80% answer facts — up from 75% and 62% on the golden set, but the gap to the other two has not
+  closed. Counting and procedural questions about prose keep landing elsewhere.
+- **The retrieval numbers describe a 24-chunk corpus.** With top-5 over 11 graph chunks, half the
   store is returned every time, which is not a hard retrieval problem. Measured on this corpus,
   plain cosine over chunk text beat Personalized PageRank at ranking (88% vs 66% r@1); the two are
   fused precisely because neither dominates, and a larger corpus is what would settle it.
@@ -544,14 +628,35 @@ Stated because they are real, not because they are theoretical:
   says to follow the question even when the context is in another language, and at temperature 0 the
   model obeys for most questions and ignores it for some. Measured: an English question about the
   support manual came back in Portuguese while three others on the same corpus came back in English.
+- **Compound detection is written for Portuguese and English.** The clause boundaries and the list
+  of interrogatives are two regexes in `clauses.py`; a third language needs a third entry, and a
+  message that asks two questions without a conjunction or a question mark between them is not
+  detected at all.
 - **Source files (`.py`, `.ts`, …) are not supported.** Doing it properly needs AST-aware chunking
   and probably a fourth route; adding the extension to the config would route code by accident
   rather than by decision.
 - **Images and tables embedded inside PDFs and DOCX are skipped.** Only their text is extracted.
-- **A filename can only be ingested once.** Re-ingesting a changed file requires renaming it.
 - **`llama.cpp` is not bit-for-bit deterministic even at temperature 0.** The maths in this project
   is; the model steps have residual variance, and saying otherwise would be the imprecision this
   project criticises.
+
+### Fixed since the last release
+
+- **The semantic cache served the wrong answer.** Ask for the Sudeste revenue, then the Nordeste
+  revenue, and the second question came back with the first one's figure: the two differ by one word
+  in a long sentence and score 0.917, above the 0.80 threshold. Raising the threshold does not fix
+  it — legitimate paraphrases score 0.771 to 0.911, so the ranges overlap. A hit now also requires
+  the names, the numbers and the number of questions asked to be identical, which is what "Sudeste"
+  and "Nordeste" differ by and what a paraphrase never changes.
+- **A filename could only be ingested once**, so correcting a document meant renaming it. Identity
+  is now the SHA-256 of the content: the same bytes are skipped whatever they are called, changed
+  bytes are ingested under a name already seen, and the previous version's chunks are removed from
+  their stores first. `tests/test_reingest_integration.py` proves the whole path.
+- **Every graph query re-embedded every entity in the graph.** That was ~100 ms of a ~160 ms route,
+  growing with the corpus (76 ms at 40 entities, 100 ms at 51). Entity names and chunk texts never
+  change, so their vectors are now computed once; the span attribute `graph.embedded` reports how
+  many were computed, so a regression shows rather than hides.
+- **The router chose exactly one store**, so a message asking two questions was half answered.
 
 ---
 
