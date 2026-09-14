@@ -25,6 +25,7 @@ async def chat(
         trace_id=f"{trace.get_current_span().get_span_context().trace_id:032x}",
         sources=result.sources,
         route=decision.route if decision else None,
+        routes=list(decision.routes) if decision else [],
         decision_stage=decision.decision_stage if decision else None,
         margin=decision.margin if decision else None,
         scores=decision.scores if decision else {},
@@ -62,6 +63,7 @@ def _serialize(event: dict) -> dict:
         return {
             "type": "decision",
             "route": decision.route,
+            "routes": list(decision.routes),
             "decision_stage": decision.decision_stage,
             "margin": decision.margin,
             "scores": decision.scores,
