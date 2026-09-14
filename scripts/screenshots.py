@@ -218,6 +218,15 @@ SHOTS = [
         None,
     ),
     ("chat-evidence", "/", "Which database does the Orion Database replicate to?", False, None),
+    # One message, two questions, two stores. The route line reads "relational +
+    # graph" and both halves are answered.
+    (
+        "chat-multi",
+        "/",
+        "What was the Sudeste revenue and who approves a purchase of eighty thousand reais?",
+        False,
+        None,
+    ),
     ("chat-cache", "/", "Who can suspend the Contrato Marco 2026?", True, None),
     # The telemetry view is empty until something has run, so ask first and only
     # then navigate to it. Shooting it cold produced a picture of an empty state.
