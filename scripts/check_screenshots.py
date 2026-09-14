@@ -31,7 +31,15 @@ REFERENCE = re.compile(r"docs/screenshots/([\w.-]+\.png)")
 # and the config that decides where that corpus lands and what the panels read.
 # Deliberately not all of backend/: a change to the SQL guard does not alter a
 # single pixel, and a check that cries wolf gets disabled.
-DEPICTED_BY = ["frontend/src", "config.yaml", "demo"]
+DEPICTED_BY = [
+    "frontend/src",
+    "config.yaml",
+    "demo",
+    # The demo corpus is depicted; the prose describing it is not. Editing
+    # demo/README.md changed no pixel and failed this check, which is the crying
+    # wolf the paragraph above is about.
+    ":(exclude)demo/README.md",
+]
 
 
 def last_commit_time(*paths: str) -> int:
