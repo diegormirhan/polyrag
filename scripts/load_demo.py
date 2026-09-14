@@ -55,6 +55,38 @@ def _reset(settings: Settings) -> None:
     print(f"  removido: {', '.join(removed) if removed else 'nada, já estava vazio'}")
 
 
+def stage(settings: Settings) -> int:
+    """Copies the demo corpus into the hot folder. Returns how many files it staged.
+
+    Split out of main() so scripts/evaluate.py can run reset, ingest and measure as
+    one unit. A measurement taken against whatever the stores happened to hold
+    describes a corpus nobody can reproduce -- which is exactly what happened once:
+    the router's anchors were rewritten, the corpus was never re-ingested, and the
+    published numbers described a distribution the code no longer produces.
+    """
+    data_drop = ROOT / settings.paths.data_drop
+    data_drop.mkdir(parents=True, exist_ok=True)
+    processed = {p.name for p in (ROOT / settings.paths.processed).glob("*")}
+
+    staged = 0
+    for source in sorted(DEMO.glob("*")):
+        # A README belongs to the reader, not to the corpus.
+        if not source.is_file() or source.name.lower() == "readme.md":
+            continue
+        if source.name in processed:
+            print(f"  {source.name:<28} ja ingerido (use --reset para refazer)")
+            continue
+        shutil.copy2(source, data_drop / source.name)
+        print(f"  {source.name:<28} copiado")
+        staged += 1
+    return staged
+
+
+def reset(settings: Settings) -> None:
+    """Public name for the destructive step, for callers outside this script."""
+    _reset(settings)
+
+
 def main() -> None:
     settings = load_config()
 
@@ -62,23 +94,10 @@ def main() -> None:
         _reset(settings)
         print()
 
-    data_drop = ROOT / settings.paths.data_drop
-    data_drop.mkdir(parents=True, exist_ok=True)
-    processed = {p.name for p in (ROOT / settings.paths.processed).glob("*")}
-
-    for source in sorted(DEMO.glob("*")):
-        # A README belongs to the reader, not to the corpus.
-        if not source.is_file() or source.name.lower() == "readme.md":
-            continue
-        if source.name in processed:
-            print(f"  {source.name:<28} já ingerido (use --reset para refazer)")
-            continue
-        shutil.copy2(source, data_drop / source.name)
-        print(f"  {source.name:<28} copiado")
-
-    print(
-        "\nO watcher ingere em segundos com o backend de pé; sem ele, rode tests/test_ingest_integration.py."
-    )
+    stage(settings)
+    print()
+    print("O watcher ingere em segundos com o backend de pe.")
+    print("Sem backend, use: uv run python scripts/evaluate.py --reset")
 
 
 if __name__ == "__main__":

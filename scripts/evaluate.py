@@ -24,16 +24,22 @@ import re
 import sys
 import time
 import unicodedata
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import httpx
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
+import load_demo  # noqa: E402  (same directory; re-uses its reset and staging)
+
+from app.core.config import load_config  # noqa: E402
 from app.core.llama_client import LlamaClients  # noqa: E402
+from app.pipeline.ingestor import Ingestor  # noqa: E402
 from app.pipeline.orchestrator import Orchestrator  # noqa: E402
 
 EVAL_DIR = ROOT / "eval"
@@ -247,9 +253,52 @@ def _report(outcomes: list[Outcome]) -> dict[str, Any]:
     return summary
 
 
+async def _rebuild_corpus(clients: LlamaClients) -> None:
+    """Empties the stores and re-ingests demo/, in this process.
+
+    Measuring against whatever the stores happen to hold is how a number outlives
+    the code that produced it. It happened here: the router's anchors were
+    rewritten, the corpus was never re-ingested, and two published figures
+    described a chunk distribution the code no longer produces.
+
+    Refuses to run while the backend is up. Its watcher polls the same folder, and
+    two ingesters racing over data_drop/ has already corrupted a measurement once
+    in this project -- both wrote graph.json and the loser's chunks vanished.
+    """
+    settings = load_config()
+    try:
+        health = f"http://{settings.server.host}:{settings.server.port}/api/v1/health"
+        reachable = httpx.get(health, timeout=2.0)
+    except httpx.HTTPError:
+        reachable = None
+    if reachable is not None:
+        raise SystemExit(
+            "o backend esta de pe e o watcher dele competiria por data_drop/. "
+            "Pare o backend antes de rodar com --reset."
+        )
+
+    load_demo.reset(settings)
+    print()
+    load_demo.stage(settings)
+
+    ingestor = await Ingestor.create(clients)
+    print()
+    while reports := await ingestor.ingest_pending():
+        for report in reports:
+            counts = dict(Counter(report.routes))
+            print(f"  {report.path.name:<28} {len(report.routes):>2} chunks -> {counts}")
+    print()
+
+
 async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit", type=int, help="run only the first N questions")
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="wipe the stores and re-ingest demo/ before measuring, so the numbers "
+        "describe a corpus this code actually produces",
+    )
     parser.add_argument(
         "--set",
         default=str(DEFAULT_SET),
@@ -265,6 +314,10 @@ async def main() -> None:
         cases = cases[: args.limit]
 
     clients = LlamaClients()
+    if args.reset:
+        await _rebuild_corpus(clients)
+    # Built after the ingestion on purpose: the stores are read at construction, so
+    # an orchestrator created first would hold the graph as it was before.
     orchestrator = await Orchestrator.create(clients)
     outcomes = []
     try:
