@@ -1,4 +1,4 @@
-import { watchSpans, type Span } from './api';
+import { api, watchSpans, type Span } from './api';
 
 /**
  * One telemetry connection for the whole app.
@@ -12,11 +12,27 @@ export const spans = $state<{ items: Span[] }>({ items: [] });
 const LIMIT = 1000;
 let disconnect: (() => void) | null = null;
 
-export function connectSpans() {
+export async function connectSpans() {
 	if (disconnect) return;
+
+	// Subscribe first, then backfill. The other order drops anything that arrives
+	// while the fetch is in flight.
 	disconnect = watchSpans((span) => {
 		spans.items = [...spans.items.slice(-(LIMIT - 1)), span];
 	});
+
+	// The backend keeps a ring buffer of recent spans and GET /telemetry/traces
+	// exists to hand it over, but nothing called it: a page load started blank and
+	// the Telemetry view looked empty right after a question had been answered.
+	try {
+		const buffered = await api.traces();
+		const live = new Set(spans.items.map((span) => span.span_id));
+		const merged = [...buffered.filter((span) => !live.has(span.span_id)), ...spans.items];
+		spans.items = merged.slice(-LIMIT);
+	} catch {
+		// The socket is already connected and is the source that matters; a failed
+		// backfill costs history, not function.
+	}
 }
 
 export function clearSpans() {

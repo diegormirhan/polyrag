@@ -9,8 +9,12 @@
 	let notice = $state<string | null>(null);
 
 	// One telemetry socket for the whole app, opened where the app is, not where
-	// a particular view happens to be mounted.
-	$effect(() => connectSpans());
+	// a particular view happens to be mounted. Braces, not an arrow returning the
+	// call: connectSpans is async now, and a returned promise would be mistaken
+	// for the effect's cleanup function.
+	$effect(() => {
+		connectSpans();
+	});
 
 	// Dropping a file works from any view: the ingestion pipeline does not care
 	// which page you were looking at, and neither should the interface.
