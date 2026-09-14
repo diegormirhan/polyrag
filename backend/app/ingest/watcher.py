@@ -1,12 +1,28 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
 from app.core.config import Settings, load_config
+
+
+def file_digest(path: Path) -> str:
+    """SHA-256 of the file's bytes — the identity the pipeline tracks it by.
+
+    Bytes rather than the name, because the name is what the user types and the
+    content is what was ingested. Read in blocks so a large PDF is not held in
+    memory to be hashed.
+    """
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 # A closed set of allowed "kinds" of file. Using an Enum instead of raw strings
@@ -47,14 +63,31 @@ class Watcher:
     def __init__(self, settings: Settings | None = None) -> None:
         self._settings = settings or load_config()
 
-    def _candidates(self) -> list[Path]:
-        # "New" = sitting in data_drop/ and NOT already moved into data/processed/.
-        # If it's still in data_drop, by definition it hasn't been ingested yet.
-        data_drop = Path(self._settings.paths.data_drop)
-        processed = Path(self._settings.paths.processed)
-        processed_names = {p.name for p in processed.glob("*")} if processed.exists() else set()
+    def _ingested_digests(self) -> set[str]:
+        """The content digest of every file already ingested, from the manifest.
 
-        return [p for p in data_drop.glob("*") if p.is_file() and p.name not in processed_names]
+        The manifest, and no longer the archive folder, is what "already ingested"
+        means. Keying on the name made a file ingestable exactly once: correcting a
+        typo in a document and dropping it back under the same name did nothing,
+        and the only way to re-ingest was to rename the file. Keying on the content
+        makes the right thing happen for both cases -- the same bytes are skipped
+        however they are named, and changed bytes are ingested even under a name
+        already seen.
+        """
+        manifest = Path(self._settings.paths.ingest_manifest)
+        if not manifest.exists():
+            return set()
+        entries = json.loads(manifest.read_text(encoding="utf-8"))
+        return {entry["digest"] for entry in entries.values() if "digest" in entry}
+
+    def _candidates(self) -> list[Path]:
+        data_drop = Path(self._settings.paths.data_drop)
+        ingested = self._ingested_digests()
+        return [
+            path
+            for path in data_drop.glob("*")
+            if path.is_file() and file_digest(path) not in ingested
+        ]
 
     async def poll_once(self) -> list[IngestFile]:
         # One check-cycle, no waiting/looping inside — kept separate from watch()

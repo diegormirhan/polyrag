@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
 import re
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -13,9 +13,9 @@ from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients
 from app.ingest import loaders, ocr
 from app.ingest.chunking import chunks
-from app.ingest.watcher import FileKind, IngestFile, Watcher
+from app.ingest.watcher import FileKind, IngestFile, Watcher, file_digest
 from app.pipeline.router import Router
-from app.rags.base import RAGBase
+from app.rags.base import RAGBase, content_id
 from app.rags.factory import build_rags
 
 _tracer = trace.get_tracer("polyrag.pipeline")
@@ -102,18 +102,26 @@ class Ingestor:
                     "ingest.kind": ingest_file.kind.value,
                 }
             )
+            # A file arriving under a name already ingested is a correction, not a
+            # duplicate -- the watcher only offers it when its bytes differ. Its
+            # previous chunks go before the new ones arrive, or the stores would
+            # hold both versions and retrieval would return whichever ranked higher.
+            digest = file_digest(ingest_file.path)
+            await self._forget(ingest_file.path.name)
+
             if ingest_file.kind == FileKind.TABLE:
                 # A spreadsheet is tabular by definition, so routing it would be asking
                 # a question whose answer is already known. Only chunks get routed.
                 frame = loaders.load_table(ingest_file.path)
                 await self._rags["relational"].ingest((frame, _table_name(ingest_file.path)))
-                routes = ["relational"]
+                stored = [("relational", "")]
             else:
-                routes = await self._route_chunks(await self._to_text(ingest_file), ingest_file.path)
+                stored = await self._route_chunks(await self._to_text(ingest_file), ingest_file.path)
 
+            routes = [route for route, _ in stored]
             span.set_attributes({"ingest.chunks": len(routes), "ingest.routes": routes})
             self._archive(ingest_file.path)
-            self._record(ingest_file.path.name, routes)
+            self._record(ingest_file.path.name, digest, stored)
             return IngestReport(ingest_file.path, routes)
 
     async def _to_text(self, ingest_file: IngestFile) -> str:
@@ -123,8 +131,9 @@ class Ingestor:
             return loaders.load_document(ingest_file.path)
         return loaders.load_text(ingest_file.path)
 
-    async def _route_chunks(self, text: str, path: Path) -> list[str]:
-        routes = []
+    async def _route_chunks(self, text: str, path: Path) -> list[tuple[str, str]]:
+        """(route, content id) for each chunk stored, in order."""
+        stored_chunks: list[tuple[str, str]] = []
         for index, chunk in enumerate(await chunks(text, self._clients, self._settings)):
             with _tracer.start_as_current_span("pipeline.ingest.chunk") as span:
                 decision = await self._router.route(chunk)
@@ -143,8 +152,8 @@ class Ingestor:
                         **{f"router.score.{r}": s for r, s in decision.scores.items()},
                     }
                 )
-            routes.append(stored_in)
-        return routes
+            stored_chunks.append((stored_in, content_id(chunk)))
+        return stored_chunks
 
     async def _store(self, route: str, chunk: str, path: Path, index: int) -> str:
         """Stores the chunk and returns the route it actually landed in."""
@@ -176,23 +185,38 @@ class Ingestor:
         await self._rags[route].ingest(chunk)
         return route
 
-    def _record(self, name: str, routes: list[str]) -> None:
-        """Persists where a file's chunks landed.
+    def _entries(self) -> dict[str, dict]:
+        manifest = Path(self._settings.paths.ingest_manifest)
+        return json.loads(manifest.read_text(encoding="utf-8")) if manifest.exists() else {}
 
-        Without this the mapping lives only in the running process, so a restart
-        loses the one thing the corpus view exists to show. Rewritten whole rather
-        than appended: the file is small, and a truncated append would be worse
+    async def _forget(self, name: str) -> None:
+        """Drops whatever a previous version of this file left in the stores."""
+        previous = self._entries().get(name, {}).get("stored", [])
+        by_route: dict[str, list[str]] = {}
+        for route, chunk_id in previous:
+            if chunk_id:
+                by_route.setdefault(route, []).append(chunk_id)
+        for route, ids in by_route.items():
+            await self._rags[route].forget(ids)
+
+    def _record(self, name: str, digest: str, stored: list[tuple[str, str]]) -> None:
+        """Persists what a file produced: its digest, and where each chunk landed.
+
+        The digest is the pipeline's answer to "have I ingested this?", so this
+        file is now that record rather than the archive folder. Rewritten whole
+        rather than appended: it is small, and a truncated append would be worse
         than a lost entry.
         """
         manifest = Path(self._settings.paths.ingest_manifest)
         manifest.parent.mkdir(parents=True, exist_ok=True)
-        entries = json.loads(manifest.read_text(encoding="utf-8")) if manifest.exists() else {}
-        entries[name] = {"chunks": len(routes), "routes": routes}
+        entries = self._entries()
+        entries[name] = {"digest": digest, "stored": [list(pair) for pair in stored]}
         manifest.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def _archive(self, path: Path) -> None:
-        # Moving into data/processed/ is what marks a file as done: the watcher
-        # defines "new" as "not present in that folder".
+        # A keepsake copy of what was ingested, and the corpus view's file list.
+        # `replace` rather than `move` because a corrected file arrives under a
+        # name the folder already holds, and on Windows that makes move fail.
         processed = Path(self._settings.paths.processed)
         processed.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(path), str(processed / path.name))
+        os.replace(path, processed / path.name)
