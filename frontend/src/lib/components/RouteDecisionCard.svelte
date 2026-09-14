@@ -29,7 +29,9 @@
 		<p class="idle">Waiting for a question.</p>
 	{:else}
 		<div class="chosen">
-			<strong>{decision.route}</strong>
+			<!-- More than one store when the message asked more than one question:
+			     each question was routed on its own and retrieved with its own text. -->
+			<strong>{(decision.routes ?? [decision.route]).join(' + ')}</strong>
 			<!-- Amber marks the gray zone: the configured anchors did not decide on
 			     their own. It is no longer a model call, but it is still the branch
 			     worth noticing. -->
@@ -54,6 +56,12 @@
 		</dl>
 
 		<p class="explain">{STAGE_COPY[decision.decision_stage]}</p>
+		{#if (decision.routes ?? []).length > 1}
+			<p class="explain">
+				The message asked more than one question, so each one was routed and retrieved
+				separately. The scores above are for the message as a whole.
+			</p>
+		{/if}
 	{/if}
 </section>
 

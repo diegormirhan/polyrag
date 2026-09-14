@@ -4,6 +4,9 @@ export type Route = 'relational' | 'vectorial' | 'graph';
 
 export interface RouteDecision {
 	route: Route;
+	/** Every store consulted, primary first. Longer than one when the message
+	    asked more than one question. */
+	routes: Route[];
 	decision_stage: 'heuristic' | 'embedding' | 'content_evidence';
 	margin: number;
 	scores: Record<string, number>;
