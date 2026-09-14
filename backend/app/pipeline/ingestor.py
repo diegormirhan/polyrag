@@ -82,7 +82,17 @@ class Ingestor:
 
     async def ingest_pending(self) -> list[IngestReport]:
         """One pass over data_drop/. The infinite watch loop belongs to the caller."""
-        return [await self.ingest_file(f) for f in await self._watcher.poll_once()]
+        reports = [await self.ingest_file(f) for f in await self._watcher.poll_once()]
+        if reports:
+            # The stores changed, so what they can tell the router changed with
+            # them. One embedding call for a handful of short headings, and only
+            # when something was actually ingested -- never on the question path.
+            #
+            # This works because main.py builds ONE router and hands the same
+            # object to the ingestor and the orchestrator: refreshing here is
+            # what the next question routes against.
+            await self._router.refresh_content_anchors(self._rags)
+        return reports
 
     async def ingest_file(self, ingest_file: IngestFile) -> IngestReport:
         with _tracer.start_as_current_span("pipeline.ingest") as span:

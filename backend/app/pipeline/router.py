@@ -93,6 +93,30 @@ class Router:
                 content[route_name] = [normalize(v) for v in await embed(clients.embeddings, phrases)]
         return cls(anchors, clients, settings, content)
 
+    async def refresh_content_anchors(self, rags: dict[str, RAGBase]) -> None:
+        """Re-reads what each store holds. Called after ingestion, never per query.
+
+        The content anchors were a snapshot taken when the process started, which
+        is the wrong lifetime for a hot folder: a file dropped into data_drop/
+        changes what the stores contain, and until this runs the gray zone is
+        decided against the previous corpus.
+
+        Measured on a file ingested into a running backend. Asked "quando ocorre a
+        manutencao do Banco de Dados Titan", a subject the file had just
+        introduced, the router scored vectorial at 0.441 and answered "there is no
+        information". After a restart -- the same stores, the same question, only
+        fresh anchors -- vectorial scored 0.662 and the answer was correct.
+
+        Only the gray zone is affected. A question stage 2 decides confidently
+        never reaches these anchors, which is why the staleness was invisible.
+        """
+        content: dict[str, list[list[float]]] = {}
+        for route_name in self._settings.router.routes:
+            phrases = await rags[route_name].content_anchors() if route_name in rags else []
+            if phrases:
+                content[route_name] = [normalize(v) for v in await embed(self._clients.embeddings, phrases)]
+        self._content_anchors = content
+
     async def route(self, text: str) -> RouteDecision:
         cfg = self._settings.router
 
