@@ -177,7 +177,7 @@ async def main() -> None:
             )
             print(f"capturando {WIDTH}x{HEIGHT} @{SCALE}x em {OUT_DIR.relative_to(ROOT)}/")
 
-            for name, path, question, repeat in SHOTS:
+            for name, path, question, repeat, after in SHOTS:
                 # Cleared before every chat shot: the previous shot leaves its
                 # question in the cache, and without this the second one is
                 # answered from RAM and the screenshot shows an empty pipeline.
@@ -189,6 +189,9 @@ async def main() -> None:
                     if repeat:
                         # Asked twice on purpose: the second one is the cache hit.
                         await ask(tab, question)
+                if after:
+                    # Some views only have anything to show once the pipeline ran.
+                    await tab.goto(f"{FRONTEND}{after}")
                 await tab.shoot(name)
     finally:
         chrome.terminate()
@@ -201,23 +204,32 @@ async def main() -> None:
 # geometry, a route decided by the gray-zone evidence stage, the corpus split,
 # and the process controls.
 SHOTS = [
-    # name, path, question (None = just load the page), ask twice for a cache hit
+    # name, path, question (None = just load the page), ask twice, navigate here before shooting
     #
     # Asked in English against a Portuguese corpus, on purpose. The answer follows
     # the question's language and the sources show the passage as it was written,
     # which is the multilingual behaviour rather than a translation step.
-    ("chat-relational", "/", "What was the total revenue of the Sudeste region?", False),
+    ("chat-relational", "/", "What was the total revenue of the Sudeste region?", False, None),
     (
         "chat-graph",
         "/",
         "Which approval policy do the orders processed by Sistema Atlas follow?",
         False,
+        None,
     ),
-    ("chat-evidence", "/", "Which database does the Orion Database replicate to?", False),
-    ("chat-cache", "/", "Who can suspend the Contrato Marco 2026?", True),
-    ("corpus", "/corpus", None, False),
-    ("servers", "/servers", None, False),
-    ("telemetry", "/telemetry", None, False),
+    ("chat-evidence", "/", "Which database does the Orion Database replicate to?", False, None),
+    ("chat-cache", "/", "Who can suspend the Contrato Marco 2026?", True, None),
+    # The telemetry view is empty until something has run, so ask first and only
+    # then navigate to it. Shooting it cold produced a picture of an empty state.
+    (
+        "telemetry",
+        "/",
+        "Who approves a purchase of seventy thousand reais?",
+        False,
+        "/telemetry",
+    ),
+    ("corpus", "/corpus", None, False, None),
+    ("servers", "/servers", None, False, None),
 ]
 
 

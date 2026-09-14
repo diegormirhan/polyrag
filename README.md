@@ -476,6 +476,13 @@ retrieval has even finished.
 *The same question, asked twice. The second answer skips routing, retrieval and generation
 entirely: three spans and 10 ms, against roughly a second for the first.*
 
+![The Telemetry view: every trace, its spans and the attributes behind the decision](docs/screenshots/telemetry.png)
+
+*Every trace the backend produced, the span waterfall for the selected one, and the attributes that
+decided it. `graph.seed_best` is the cosine that chose the walk's starting node; `cache.hit` says
+why this request did the work instead of skipping it. This is the claim about auditability, rendered
+rather than asserted.*
+
 ![The Servers view: start and stop each model](docs/screenshots/servers.png)
 
 *Each model is its own process, running windowless. Stopping one hands its VRAM straight back,
