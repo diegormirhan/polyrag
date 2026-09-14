@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from opentelemetry import trace
 
 from app.core.config import Settings, load_config
 from app.core.llama_client import LlamaClients, embed
 from app.core.vectors import dot, normalize
+from app.pipeline.clauses import question_clauses
 from app.pipeline.tabularity import tabularity_score
 from app.rags.base import RAGBase
 
@@ -18,6 +19,19 @@ class RouteDecision:
     route: str
     decision_stage: str  # "heuristic" | "embedding" | "content_evidence"
     scores: dict[str, float]
+    # (question, store) for each question the message asked, in order. Empty for
+    # the ordinary single-question message, which is why every existing caller of
+    # `.route` keeps working unchanged.
+    asks: tuple[tuple[str, str], ...] = ()
+
+    @property
+    def routes(self) -> tuple[str, ...]:
+        """Every store to consult, primary first, without repeats."""
+        return tuple(dict.fromkeys(route for _, route in self.asks)) or (self.route,)
+
+    @property
+    def fan_out(self) -> bool:
+        return len(self.routes) > 1
 
     @property
     def score_top1(self) -> float:
@@ -118,6 +132,31 @@ class Router:
         self._content_anchors = content
 
     async def route(self, text: str) -> RouteDecision:
+        """Where to look. One store for one question, several when several were asked.
+
+        The compound case is decided by routing each question separately and
+        taking the union, not by a threshold on the second-best score -- that was
+        measured and does not separate, see `clauses.py`. Cost is proportional to
+        how many questions were actually asked: a single-subject message never
+        reaches the loop below, because the split returns one fragment.
+        """
+        decision = await self._decide(text)
+        fragments = question_clauses(text)
+        if len(fragments) < 2:
+            return decision
+
+        # Each question is routed on its own, and later retrieved with its own
+        # text. Handing the whole message to every store was measured failing:
+        # asked "qual foi a receita do Sudeste e quem aprova uma compra desse
+        # valor", the SQL step got a sentence that is half a compliance question
+        # and produced nothing the guards would accept.
+        asks = tuple([(fragment, (await self._decide(fragment)).route) for fragment in fragments])
+        if len({route for _, route in asks}) < 2:
+            # Two questions about the same store is still one lookup.
+            return decision
+        return replace(decision, route=asks[0][1], asks=asks)
+
+    async def _decide(self, text: str) -> RouteDecision:
         cfg = self._settings.router
 
         # Stage 1: heuristic — cheap, no embedding call at all.
@@ -158,6 +197,15 @@ class Router:
         # table is about sales. Measured on 40 questions written after the anchors
         # were tuned, this took routing from 82% to 95% -- and every stage of the
         # router is now arithmetic.
+        #
+        # The evidence decides outright, with no margin test of its own. Requiring
+        # it to beat the runner-up by delta_margin before overruling stage 2 was
+        # tried and measured: on the golden set it fixed both remaining graph
+        # misroutes and took routing from 90% to 95%, and on the held-out set it
+        # broke two others and took routing from 95% to 90%. Six errors in eighty
+        # questions before, six after -- it moved them rather than removing them,
+        # and it only looked like an improvement on the set it was chosen against.
+        # That is what the held-out set is for.
         if self._content_anchors:
             combined = _best_route_scores(vector, self._content_anchors)
             for route, score in scores.items():
