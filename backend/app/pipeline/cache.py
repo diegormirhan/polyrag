@@ -54,6 +54,14 @@ class SemanticCache:
     Geometry is good at "same topic" and bad at "same entity"; exact token
     comparison is the opposite. Neither is asked to do the other's job.
 
+    Fails closed when there is nothing to check: a question with no capitalised
+    word and no digit produces an empty set, and an empty set trivially equals
+    another empty set. "qual a receita do sudeste" and "qual a receita do
+    nordeste", both typed lowercase, would otherwise share that empty key and
+    reintroduce the exact bug this class exists to fix. Refusing the hit costs a
+    cache miss on a question that genuinely names nothing; serving it wrong costs
+    a fabricated number that looks like a real answer.
+
     Still pure arithmetic and still unit-testable with handmade vectors, no
     llama-server involved.
     """
@@ -72,10 +80,14 @@ class SemanticCache:
         """Answer stored for a question that is both near enough and about the same things."""
         if self._index.ntotal == 0:
             return None
+        wanted = cache_key(question)
+        if not wanted[1]:
+            # Nothing to pin the question to: an empty set matches any other
+            # empty set, which is the token check silently turning itself off.
+            return None
         # More than one neighbour, because the nearest is not necessarily the one
         # that passes the token check: the Nordeste question sits closer to the
         # Sudeste one than to its own earlier paraphrase.
-        wanted = cache_key(question)
         depth = min(self._index.ntotal, _NEIGHBOURS)
         scores, ids = self._index.search(_as_batch(vector), depth)
         for score, index in zip(scores[0], ids[0], strict=True):
