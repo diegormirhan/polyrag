@@ -605,6 +605,14 @@ Stated because they are real, not because they are theoretical:
   that name the same things and ask the same number of questions still rest on the 0.80 threshold
   alone. Cosine similarity is good at "same topic" and bad at "same entity"; the token check is the
   opposite, and between them there is a gap neither covers.
+- **The token check only recognises a capitalised word or a digit, so a name typed lowercase is
+  invisible to it.** "qual a receita do sudeste" and "qual a receita do nordeste", both lowercase,
+  extract to the same empty set — and an empty set trivially equals another empty set, which used to
+  let the exact bug above back in through a side door. The cache now refuses a hit whenever neither
+  question has anything to check against, rather than treating "nothing to compare" as "matches".
+  The cost is real: a genuinely nameless question, even repeated word for word, now always misses.
+  Fixing this at the source — recognising "sudeste" without capitalisation — needs a vocabulary to
+  check against, not a better regex; see `refresh_content_anchors` for the shape that would take.
 - **Ingestion routing is sensitive to the anchors, so the corpus is not stable across changes.**
   Rewriting the route anchors moved one paragraph of the company history from the vector store to
   the graph, and three questions that had been passing began to fail. Nothing about the file or the
