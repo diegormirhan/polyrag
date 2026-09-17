@@ -30,8 +30,8 @@ def test_empty_cache_never_hits():
 
 def test_identical_vector_hits():
     cache = SemanticCache(load_config())
-    cache.store(_unit_vector(0), "qual o total de vendas", "resposta A")
-    assert cache.lookup(_unit_vector(0), "qual o total de vendas") == "resposta A"
+    cache.store(_unit_vector(0), "qual o total de vendas em 2026", "resposta A")
+    assert cache.lookup(_unit_vector(0), "qual o total de vendas em 2026") == "resposta A"
 
 
 def test_orthogonal_vector_misses():
@@ -59,11 +59,38 @@ def test_same_topic_different_region_misses():
     assert cache.lookup(_near(0, 0.917), "qual foi a receita total da regiao Nordeste") is None
 
 
-def test_paraphrase_without_names_still_hits():
-    """The thing the check must not break: same question, different wording."""
+def test_paraphrase_with_shared_name_still_hits():
+    """The thing the check must not break: same question, different wording, one name in common."""
+    cache = SemanticCache(load_config())
+    cache.store(_unit_vector(0), "qual foi a receita total da regiao Sudeste", "R$ 4.988.300")
+    assert cache.lookup(_near(0, 0.90), "qual a receita da regiao Sudeste") == "R$ 4.988.300"
+
+
+def test_paraphrase_without_any_names_misses():
+    """Fails closed: nothing to pin either question to, so the hit is refused.
+
+    "qual o total de vendas" and "qual a soma das vendas" both produce an empty
+    token set. An empty set trivially equals another empty set, which is exactly
+    how a lowercase "sudeste" question used to match a lowercase "nordeste" one --
+    the token check silently turning itself off. The cost paid here is a real
+    cache miss on a question that genuinely names nothing; the alternative is
+    reopening that bug.
+    """
     cache = SemanticCache(load_config())
     cache.store(_unit_vector(0), "qual o total de vendas", "R$ 12.400")
-    assert cache.lookup(_near(0, 0.88), "qual a soma das vendas") == "R$ 12.400"
+    assert cache.lookup(_near(0, 0.88), "qual a soma das vendas") is None
+
+
+def test_lowercase_entity_no_longer_bypasses_the_check():
+    """The bug this fix closes: a proper noun typed lowercase used to slip through.
+
+    The extractor still only recognises a capitalised word or a digit -- that has
+    not changed -- so "sudeste" and "nordeste" in lowercase both produce an empty
+    set. What changed is that an empty set no longer counts as a match.
+    """
+    cache = SemanticCache(load_config())
+    cache.store(_unit_vector(0), "qual foi a receita total da regiao sudeste", "R$ 4.988.300")
+    assert cache.lookup(_near(0, 0.917), "qual foi a receita total da regiao nordeste") is None
 
 
 def test_a_closer_wrong_neighbour_does_not_hide_the_right_one():
